@@ -1,0 +1,9 @@
+How to run Expiration Tracker App
+
+1. load or Clone GitHub
+2. Insert the API key into the fil \lib\models\ai_config.darte
+3. run "flutter pub get" to Downloading packages and dependencies
+4. run "flutter run" to run app
+	If connected to a phone, it will automatically run on the phone.
+	If it's not connected to a phone, there will be options to choose from website
+	However, if you want to connect to a virtual phone, you can choose to install an emulator
