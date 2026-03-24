@@ -18,4 +18,4 @@ ground truth for testing. This dataset is currently in the labeling stage before
 the system to ensure it can handle the diverse variety of product labels found in Thailand.
 
 #### Nattawadee Chaleechat
-#### Saranyapong Sansit
+#### Saranyapong Sanusit
