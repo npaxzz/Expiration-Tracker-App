@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +14,13 @@ import '../theme/app_theme.dart';
 
 class ReviewScreen extends StatefulWidget {
   final ScanResult scanResult;
-  const ReviewScreen({super.key, required this.scanResult});
+  final String? productImagePath;
+
+  const ReviewScreen({
+    super.key,
+    required this.scanResult,
+    this.productImagePath,
+  });
 
   @override
   State<ReviewScreen> createState() => _ReviewScreenState();
@@ -458,9 +468,25 @@ class _ReviewScreenState extends State<ReviewScreen> {
     if (picked != null) setState(() => _expirationDate = picked);
   }
 
+  Future<String?> _saveImagePermanently(String? tempPath) async {
+    if (tempPath == null) return null;
+    if (kIsWeb) return tempPath;
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final fileName = 'food_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedPath = p.join(appDir.path, fileName);
+      await File(tempPath).copy(savedPath);
+      return savedPath;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _save() async {
     setState(() => _isSaving = true);
     try {
+      final savedImagePath =
+          await _saveImagePermanently(widget.productImagePath);
       await context.read<FoodProvider>().addItem(
             name: _nameController.text.trim().isEmpty
                 ? 'Unknown Product'
@@ -468,6 +494,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             category: _category,
             expirationDate: _expirationDate,
             quantity: int.tryParse(_quantityController.text) ?? 1,
+            imagePath: savedImagePath,
           );
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);

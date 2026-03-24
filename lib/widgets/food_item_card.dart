@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -65,6 +67,8 @@ class FoodItemCard extends StatelessWidget {
   }
 
   Widget _buildCategoryIcon() {
+    final hasImage = item.imagePath != null && item.imagePath!.isNotEmpty;
+
     return Container(
       width: 52,
       height: 52,
@@ -72,8 +76,43 @@ class FoodItemCard extends StatelessWidget {
         color: item.category.lightColor,
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Center(
-        child: Text(item.category.emoji, style: const TextStyle(fontSize: 24)),
+      clipBehavior: Clip.hardEdge,
+      child: hasImage
+          ? _buildImage(item.imagePath!)
+          : Center(
+              child: Text(
+                item.category.emoji,
+                style: const TextStyle(fontSize: 24),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildImage(String imagePath) {
+    try {
+      if (kIsWeb) {
+        return Image.network(
+          imagePath,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildEmojiFallback(),
+        );
+      } else {
+        return Image.file(
+          File(imagePath),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildEmojiFallback(),
+        );
+      }
+    } catch (_) {
+      return _buildEmojiFallback();
+    }
+  }
+
+  Widget _buildEmojiFallback() {
+    return Center(
+      child: Text(
+        item.category.emoji,
+        style: const TextStyle(fontSize: 24),
       ),
     );
   }
@@ -155,10 +194,7 @@ class FoodItemCard extends StatelessWidget {
         _actionButton(Icons.edit_rounded, AppTheme.primary, onEdit),
         const SizedBox(height: 6),
         _actionButton(
-          Icons.delete_outline_rounded,
-          AppTheme.expiredColor,
-          onDelete,
-        ),
+            Icons.delete_outline_rounded, AppTheme.expiredColor, onDelete),
       ],
     );
   }

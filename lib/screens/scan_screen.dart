@@ -162,8 +162,13 @@ class _ScanScreenState extends State<ScanScreen> {
       }
       if (!mounted) return;
       setState(() => _isAnalyzing = false);
-      Navigator.push(context,
-          MaterialPageRoute(builder: (_) => ReviewScreen(scanResult: result)));
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => ReviewScreen(
+                    scanResult: result,
+                    productImagePath: _productImage?.path,
+                  )));
     } catch (e) {
       setState(() => _isAnalyzing = false);
       _showSnack('Analysis failed: $e');
@@ -512,9 +517,9 @@ class _ScanScreenState extends State<ScanScreen> {
               style: GoogleFonts.sarabun(
                   fontSize: 14, color: AppTheme.textSecondary, height: 1.6)),
           const SizedBox(height: 32),
-          _analyzeStep('📷', 'Reading label for expiry date'),
+          _analyzeStep('📷', 'Reading label for expiry date (OCR)'),
           const SizedBox(height: 10),
-          _analyzeStep('🔍', 'Detecting product category'),
+          _analyzeStep('🔍', 'Detecting product category (Image Class)'),
           const SizedBox(height: 10),
           _analyzeStep('✨', 'Preparing review screen'),
           const SizedBox(height: 32),
