@@ -59,7 +59,6 @@ JSON format:
   "product_name": string (max 30 characters),
   "category": one of ["fruits_vegetables", "eggs_dairy", "meat_frozen", "dry_food", "canned_bottled", "bakery_snacks"],
   "expiry_date": "YYYY-MM-DD" or null,
-  "confidence": number (0.0 to 1.0)
 }
 
 Instructions:
