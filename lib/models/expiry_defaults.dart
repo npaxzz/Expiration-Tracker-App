@@ -4,9 +4,9 @@ import 'food_item.dart';
 /// Used when AI/OCR cannot detect expiry date from label
 class ExpiryDefaults {
   static const Map<FoodCategory, int> shelfLife = {
-    FoodCategory.fruitsVegetables: 14,
+    FoodCategory.fruitsVegetables: 10,
     FoodCategory.eggsDairy: 14,
-    FoodCategory.meatFrozen: 180,
+    FoodCategory.meatFrozen: 60,
     FoodCategory.dryFood: 510,
     FoodCategory.cannedBottled: 730,
     FoodCategory.bakerySnacks: 5,
