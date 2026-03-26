@@ -3,8 +3,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'ai_config.dart';
+import 'expiry_defaults.dart';
 import 'food_item.dart';
-import 'ai_service.dart';
+import 'scan_result.dart';
 
 /// Gemini Vision Service
 /// ส่ง 2 รูป (ฉลาก + สินค้า) → ได้ ชื่อสินค้า + หมวดหมู่ + วันหมดอายุ
@@ -45,7 +46,7 @@ class VlmService {
     );
 
     const prompt = '''
-You are an AI that extracts structured data from 2 product images.
+You are an AI that extracts structured data from 1 or 2 product images.
 
 Return ONLY a valid JSON object.
 - No explanation
@@ -233,8 +234,7 @@ Instructions:
         return DateTime.parse(dateStr);
       } catch (_) {}
     }
-    final days = AiService.defaultShelfLife[category] ?? 7;
-    return DateTime.now().add(Duration(days: days));
+    return ExpiryDefaults.getDefaultDate(category);
   }
 
   static ScanResult _fallbackResult() {

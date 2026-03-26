@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../models/ai_config.dart';
-import '../models/ai_service.dart';
+import '../models/scan_result.dart';
 import '../models/food_item.dart';
 import '../models/food_provider.dart';
 import '../theme/app_theme.dart';
