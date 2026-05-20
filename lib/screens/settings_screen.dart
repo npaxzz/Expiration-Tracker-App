@@ -156,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         _buildInfoTile('Version', '1.0.0'),
         const Divider(height: 1, color: AppTheme.divider),
-        _buildInfoTile('OCR Scanning', 'Coming Soon'),
+        _buildInfoTile('OCR & Classification Scanning', 'gemini-2.5-flash'),
         const Divider(height: 1, color: AppTheme.divider),
         _buildInfoTile('Data Storage', 'Local Device'),
       ],
