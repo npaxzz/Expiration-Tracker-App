@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+
 import '../models/food_provider.dart';
 import '../models/food_item.dart';
 import '../theme/app_theme.dart';
@@ -12,7 +15,10 @@ import '../theme/app_theme.dart';
 class AddItemScreen extends StatefulWidget {
   final FoodItem? existingItem;
 
-  const AddItemScreen({super.key, this.existingItem});
+  const AddItemScreen({
+    super.key,
+    this.existingItem,
+  });
 
   @override
   State<AddItemScreen> createState() => _AddItemScreenState();
@@ -20,33 +26,49 @@ class AddItemScreen extends StatefulWidget {
 
 class _AddItemScreenState extends State<AddItemScreen> {
   final _formKey = GlobalKey<FormState>();
+
   final _nameController = TextEditingController();
+
   final _quantityController = TextEditingController(text: '1');
+
   final _notesController = TextEditingController();
 
-  FoodCategory _selectedCategory = FoodCategory.fruitsVegetables;
-  DateTime _expirationDate = DateTime.now().add(const Duration(days: 7));
+  final _picker = ImagePicker();
 
-  // ใช้ XFile แทน String เพื่อให้ตรงกับ ScanScreen
+  FoodCategory _selectedCategory = FoodCategory.fruitsVegetables;
+
+  DateTime _expirationDate = DateTime.now().add(
+    const Duration(days: 7),
+  );
+
   XFile? _pickedImage;
-  String? _existingImagePath; // เก็บ URL เดิม (กรณี edit)
+
+  String? _existingImagePath;
+
+  bool _removeExistingImage = false;
 
   bool _isLoading = false;
-  final _picker = ImagePicker();
 
   bool get _isEditing => widget.existingItem != null;
 
   @override
   void initState() {
     super.initState();
+
     if (_isEditing) {
       final item = widget.existingItem!;
+
       _nameController.text = item.name;
+
       _quantityController.text = item.quantity.toString();
+
       _notesController.text = item.notes ?? '';
+
       _selectedCategory = item.category;
+
       _expirationDate = item.expirationDate;
-      _existingImagePath = item.imagePath; // เก็บ path เดิมไว้
+
+      _existingImagePath = item.imagePath;
     }
   }
 
@@ -55,25 +77,39 @@ class _AddItemScreenState extends State<AddItemScreen> {
     _nameController.dispose();
     _quantityController.dispose();
     _notesController.dispose();
+
     super.dispose();
   }
 
-  // ---- Image helpers (อ้างอิงจาก ScanScreen) ----
+  // ============================================================
+  // IMAGE
+  // ============================================================
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _pickImage(
+    ImageSource source,
+  ) async {
     try {
       final picked = await _picker.pickImage(
         source: source,
         imageQuality: 70,
         maxWidth: 800,
       );
-      if (picked == null) return;
+
+      if (picked == null) {
+        return;
+      }
+
       setState(() {
         _pickedImage = picked;
-        _existingImagePath = null; // ล้าง URL เดิมเมื่อเลือกรูปใหม่
+
+        _existingImagePath = null;
+
+        _removeExistingImage = false;
       });
     } catch (e) {
-      _showSnack('Could not open camera/gallery: $e');
+      _showSnack(
+        'Could not open camera/gallery: $e',
+      );
     }
   }
 
@@ -81,82 +117,108 @@ class _AddItemScreenState extends State<AddItemScreen> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
       ),
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppTheme.divider,
-                borderRadius: BorderRadius.circular(2),
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Add Photo',
-              style: GoogleFonts.sarabun(
-                  fontSize: 20, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                // Camera — ซ่อนบน Web เหมือน ScanScreen
-                if (!kIsWeb) ...[
+              const SizedBox(height: 20),
+              Text(
+                'Add Photo',
+                style: GoogleFonts.sarabun(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  if (!kIsWeb) ...[
+                    Expanded(
+                      child: _sourceButton(
+                        icon: Icons.camera_alt_rounded,
+                        label: 'Camera',
+                        color: AppTheme.primary,
+                        onTap: () {
+                          Navigator.pop(
+                            ctx,
+                          );
+
+                          _pickImage(
+                            ImageSource.camera,
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 12,
+                    ),
+                  ],
                   Expanded(
                     child: _sourceButton(
-                      icon: Icons.camera_alt_rounded,
-                      label: 'Camera',
-                      color: AppTheme.primary,
+                      icon: Icons.photo_library_rounded,
+                      label: 'Gallery',
+                      color: const Color(
+                        0xFF1565C0,
+                      ),
                       onTap: () {
-                        Navigator.pop(ctx);
-                        _pickImage(ImageSource.camera);
+                        Navigator.pop(
+                          ctx,
+                        );
+
+                        _pickImage(
+                          ImageSource.gallery,
+                        );
                       },
                     ),
                   ),
-                  const SizedBox(width: 12),
                 ],
-                Expanded(
-                  child: _sourceButton(
-                    icon: Icons.photo_library_rounded,
-                    label: 'Gallery',
-                    color: const Color(0xFF1565C0),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _pickImage(ImageSource.gallery);
-                    },
+              ),
+              if (_pickedImage != null || _existingImagePath != null) ...[
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+
+                    setState(() {
+                      _pickedImage = null;
+
+                      _existingImagePath = null;
+
+                      _removeExistingImage = true;
+                    });
+                  },
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: AppTheme.expiredColor,
+                    size: 18,
+                  ),
+                  label: Text(
+                    'Remove Photo',
+                    style: GoogleFonts.sarabun(
+                      color: AppTheme.expiredColor,
+                    ),
                   ),
                 ),
               ],
-            ),
-            // ปุ่มลบรูป (แสดงเฉพาะเมื่อมีรูปอยู่แล้ว)
-            if (_pickedImage != null || _existingImagePath != null) ...[
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  setState(() {
-                    _pickedImage = null;
-                    _existingImagePath = null;
-                  });
-                },
-                icon: const Icon(Icons.delete_outline_rounded,
-                    color: AppTheme.expiredColor, size: 18),
-                label: Text(
-                  'Remove Photo',
-                  style: GoogleFonts.sarabun(color: AppTheme.expiredColor),
-                ),
-              ),
+              const SizedBox(height: 8),
             ],
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -169,35 +231,93 @@ class _AddItemScreenState extends State<AddItemScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+        padding: const EdgeInsets.symmetric(
+          vertical: 20,
         ),
-        child: Column(children: [
-          Icon(icon, color: color, size: 30),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style:
-                GoogleFonts.sarabun(fontWeight: FontWeight.w600, color: color),
+        decoration: BoxDecoration(
+          color: color.withValues(
+            alpha: 0.06,
           ),
-        ]),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withValues(
+              alpha: 0.2,
+            ),
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 30,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: GoogleFonts.sarabun(
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.sarabun()),
-      backgroundColor: AppTheme.primary,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    ));
+  // ============================================================
+  // IMAGE STORAGE
+  // ============================================================
+
+  Future<String?> _getImageStorageValue() async {
+    // ลบรูป
+    if (_removeExistingImage) {
+      return null;
+    }
+
+    // มีรูปใหม่
+    if (_pickedImage != null) {
+      final bytes = await _pickedImage!.readAsBytes();
+
+      if (bytes.isEmpty) {
+        return null;
+      }
+
+      final base64Image = base64Encode(bytes);
+
+      return 'image_base64:$base64Image';
+    }
+
+    // ไม่มีรูปใหม่ → ใช้รูปเดิม
+    return _existingImagePath;
   }
 
-  // ---- Build ----
+  // ============================================================
+  // SNACK
+  // ============================================================
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(
+      SnackBar(
+        content: Text(
+          msg,
+          style: GoogleFonts.sarabun(),
+        ),
+        backgroundColor: AppTheme.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -212,10 +332,15 @@ class _AddItemScreenState extends State<AddItemScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.divider),
+              border: Border.all(
+                color: AppTheme.divider,
+              ),
             ),
-            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                size: 16, color: AppTheme.textPrimary),
+            child: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 16,
+              color: AppTheme.textPrimary,
+            ),
           ),
           onPressed: () => Navigator.pop(context),
         ),
@@ -231,7 +356,10 @@ class _AddItemScreenState extends State<AddItemScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 8,
+          ),
           children: [
             _buildImageSection(),
             const SizedBox(height: 20),
@@ -253,17 +381,23 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
-  // ---- Image section ----
+  // ============================================================
+  // IMAGE SECTION
+  // ============================================================
 
   Widget _buildImageSection() {
     final hasPickedImage = _pickedImage != null;
+
     final hasExistingImage = _existingImagePath != null;
+
     final hasAnyImage = hasPickedImage || hasExistingImage;
 
     return GestureDetector(
       onTap: _showSourceSheet,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
+        duration: const Duration(
+          milliseconds: 250,
+        ),
         height: hasAnyImage ? 180 : 160,
         decoration: BoxDecoration(
           color: Colors.white,
@@ -275,79 +409,170 @@ class _AddItemScreenState extends State<AddItemScreen> {
           boxShadow: hasAnyImage
               ? [
                   BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.12),
+                    color: AppTheme.primary.withValues(
+                      alpha: 0.12,
+                    ),
                     blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  )
+                    offset: const Offset(
+                      0,
+                      4,
+                    ),
+                  ),
                 ]
               : [],
         ),
         clipBehavior: Clip.hardEdge,
         child: hasAnyImage
-            ? Stack(fit: StackFit.expand, children: [
-                // แสดงรูปที่เลือกใหม่ (XFile) หรือ URL เดิม
-                if (hasPickedImage)
-                  kIsWeb
-                      ? Image.network(_pickedImage!.path, fit: BoxFit.cover)
-                      : Image.file(File(_pickedImage!.path), fit: BoxFit.cover)
-                else
-                  Image.network(
-                    _existingImagePath!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
-                  ),
-                // Overlay ด้านล่าง
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.6),
-                          Colors.transparent,
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildCurrentImage(),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Colors.black.withValues(
+                              alpha: 0.6,
+                            ),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          const SizedBox(
+                            width: 6,
+                          ),
+                          Text(
+                            'Photo added',
+                            style: GoogleFonts.sarabun(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary,
+                              borderRadius: BorderRadius.circular(
+                                20,
+                              ),
+                            ),
+                            child: Text(
+                              'Change',
+                              style: GoogleFonts.sarabun(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    child: Row(children: [
-                      const Icon(Icons.check_circle_rounded,
-                          color: Colors.white, size: 16),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Photo added',
-                        style: GoogleFonts.sarabun(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Change',
-                          style: GoogleFonts.sarabun(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white),
-                        ),
-                      ),
-                    ]),
                   ),
-                ),
-              ])
+                ],
+              )
             : _buildImagePlaceholder(),
       ),
     );
+  }
+
+  Widget _buildCurrentImage() {
+    if (_pickedImage != null) {
+      if (kIsWeb) {
+        return Image.network(
+          _pickedImage!.path,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) {
+            return _buildImagePlaceholder();
+          },
+        );
+      }
+
+      return Image.file(
+        File(_pickedImage!.path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) {
+          return _buildImagePlaceholder();
+        },
+      );
+    }
+
+    final path = _existingImagePath;
+
+    if (path == null || path.isEmpty) {
+      return _buildImagePlaceholder();
+    }
+
+    // รูปที่เราบันทึกแบบ Base64
+    if (path.startsWith(
+      'image_base64:',
+    )) {
+      try {
+        final base64String = path.substring(
+          'image_base64:'.length,
+        );
+
+        final bytes = base64Decode(
+          base64String,
+        );
+
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) {
+            return _buildImagePlaceholder();
+          },
+        );
+      } catch (_) {
+        return _buildImagePlaceholder();
+      }
+    }
+
+    // ข้อมูลเก่าที่เป็น URL
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) {
+          return _buildImagePlaceholder();
+        },
+      );
+    }
+
+    // ข้อมูลเก่าที่เป็น local path
+    if (!kIsWeb) {
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) {
+          return _buildImagePlaceholder();
+        },
+      );
+    }
+
+    return _buildImagePlaceholder();
   }
 
   Widget _buildImagePlaceholder() {
@@ -361,8 +586,11 @@ class _AddItemScreenState extends State<AddItemScreen> {
             color: AppTheme.primary.withValues(alpha: 0.08),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.add_a_photo_rounded,
-              color: AppTheme.primary, size: 26),
+          child: const Icon(
+            Icons.add_a_photo_rounded,
+            color: AppTheme.primary,
+            size: 26,
+          ),
         ),
         const SizedBox(height: 10),
         Text(
@@ -388,30 +616,50 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
-  // ---- Other form fields (เหมือนเดิม) ----
+  // ============================================================
+  // NAME
+  // ============================================================
 
   Widget _buildNameField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _fieldLabel('Item Name *'),
+        _fieldLabel(
+          'Item Name *',
+        ),
         const SizedBox(height: 8),
         TextFormField(
           controller: _nameController,
-          style: GoogleFonts.sarabun(fontSize: 15),
-          decoration:
-              _inputDecoration('e.g. Organic Milk', Icons.label_rounded),
-          validator: (v) => v?.isEmpty == true ? 'Please enter a name' : null,
+          style: GoogleFonts.sarabun(
+            fontSize: 15,
+          ),
+          decoration: _inputDecoration(
+            'e.g. Organic Milk',
+            Icons.label_rounded,
+          ),
+          validator: (v) {
+            if (v?.trim().isEmpty == true) {
+              return 'Please enter a name';
+            }
+
+            return null;
+          },
         ),
       ],
     );
   }
 
+  // ============================================================
+  // CATEGORY
+  // ============================================================
+
   Widget _buildCategorySection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _fieldLabel('Category'),
+        _fieldLabel(
+          'Category',
+        ),
         const SizedBox(height: 10),
         GridView.count(
           crossAxisCount: 2,
@@ -420,90 +668,142 @@ class _AddItemScreenState extends State<AddItemScreen> {
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
           childAspectRatio: 2.8,
-          children: FoodCategory.values.map((cat) {
-            final isSelected = _selectedCategory == cat;
-            return GestureDetector(
-              onTap: () => setState(() => _selectedCategory = cat),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                decoration: BoxDecoration(
-                  color: isSelected ? cat.color : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected ? cat.color : AppTheme.divider,
-                    width: isSelected ? 2 : 1,
+          children: FoodCategory.values.map(
+            (cat) {
+              final isSelected = _selectedCategory == cat;
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedCategory = cat;
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(
+                    milliseconds: 200,
                   ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: cat.color.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          )
-                        ]
-                      : [],
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  children: [
-                    Text(cat.emoji, style: const TextStyle(fontSize: 18)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        cat.displayName,
-                        style: GoogleFonts.sarabun(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color:
-                              isSelected ? Colors.white : AppTheme.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                  decoration: BoxDecoration(
+                    color: isSelected ? cat.color : Colors.white,
+                    borderRadius: BorderRadius.circular(
+                      12,
                     ),
-                  ],
+                    border: Border.all(
+                      color: isSelected ? cat.color : AppTheme.divider,
+                      width: isSelected ? 2 : 1,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: cat.color.withValues(
+                                alpha: 0.3,
+                              ),
+                              blurRadius: 8,
+                              offset: const Offset(
+                                0,
+                                2,
+                              ),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        cat.emoji,
+                        style: const TextStyle(
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(
+                        width: 8,
+                      ),
+                      Expanded(
+                        child: Text(
+                          cat.displayName,
+                          style: GoogleFonts.sarabun(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: isSelected
+                                ? Colors.white
+                                : AppTheme.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            },
+          ).toList(),
         ),
       ],
     );
   }
 
+  // ============================================================
+  // DATE
+  // ============================================================
+
   Widget _buildDateSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _fieldLabel('Expiration Date *'),
+        _fieldLabel(
+          'Expiration Date *',
+        ),
         const SizedBox(height: 8),
         GestureDetector(
           onTap: _pickDate,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.divider),
+              borderRadius: BorderRadius.circular(
+                14,
+              ),
+              border: Border.all(
+                color: AppTheme.divider,
+              ),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppTheme.primary.withValues(
+                      alpha: 0.08,
+                    ),
+                    borderRadius: BorderRadius.circular(
+                      10,
+                    ),
                   ),
-                  child: const Icon(Icons.calendar_today_rounded,
-                      color: AppTheme.primary, size: 18),
+                  child: const Icon(
+                    Icons.calendar_today_rounded,
+                    color: AppTheme.primary,
+                    size: 18,
+                  ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(
+                  width: 12,
+                ),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        DateFormat('EEEE, d MMMM yyyy').format(_expirationDate),
+                        DateFormat(
+                          'EEEE, d MMMM yyyy',
+                        ).format(
+                          _expirationDate,
+                        ),
                         style: GoogleFonts.sarabun(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
@@ -520,8 +820,10 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppTheme.textSecondary),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textSecondary,
+                ),
               ],
             ),
           ),
@@ -531,41 +833,83 @@ class _AddItemScreenState extends State<AddItemScreen> {
   }
 
   String _getDaysText() {
-    final days = _expirationDate.difference(DateTime.now()).inDays;
-    if (days < 0) return 'Already expired!';
-    if (days == 0) return 'Expires today';
+    final days = _expirationDate
+        .difference(
+          DateTime.now(),
+        )
+        .inDays;
+
+    if (days < 0) {
+      return 'Already expired!';
+    }
+
+    if (days == 0) {
+      return 'Expires today';
+    }
+
     return 'Expires in $days days';
   }
 
   Color _getDaysColor() {
-    final days = _expirationDate.difference(DateTime.now()).inDays;
-    if (days < 0) return AppTheme.expiredColor;
-    if (days <= 3) return AppTheme.soonColor;
-    if (days <= 7) return AppTheme.weekColor;
+    final days = _expirationDate
+        .difference(
+          DateTime.now(),
+        )
+        .inDays;
+
+    if (days < 0) {
+      return AppTheme.expiredColor;
+    }
+
+    if (days <= 3) {
+      return AppTheme.soonColor;
+    }
+
+    if (days <= 7) {
+      return AppTheme.weekColor;
+    }
+
     return AppTheme.freshColor;
   }
+
+  // ============================================================
+  // QUANTITY
+  // ============================================================
 
   Widget _buildQuantityField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _fieldLabel('Quantity'),
+        _fieldLabel(
+          'Quantity',
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
             _qtyButton(
-                Icons.remove_rounded,
-                () => setState(() {
-                      final v = int.tryParse(_quantityController.text) ?? 1;
-                      if (v > 1) _quantityController.text = (v - 1).toString();
-                    })),
+              Icons.remove_rounded,
+              () {
+                setState(() {
+                  final v = int.tryParse(
+                        _quantityController.text,
+                      ) ??
+                      1;
+
+                  if (v > 1) {
+                    _quantityController.text = (v - 1).toString();
+                  }
+                });
+              },
+            ),
             Expanded(
               child: TextFormField(
                 controller: _quantityController,
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.sarabun(
-                    fontSize: 16, fontWeight: FontWeight.w600),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
                 decoration: const InputDecoration(
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
@@ -573,18 +917,28 @@ class _AddItemScreenState extends State<AddItemScreen> {
               ),
             ),
             _qtyButton(
-                Icons.add_rounded,
-                () => setState(() {
-                      final v = int.tryParse(_quantityController.text) ?? 1;
-                      _quantityController.text = (v + 1).toString();
-                    })),
+              Icons.add_rounded,
+              () {
+                setState(() {
+                  final v = int.tryParse(
+                        _quantityController.text,
+                      ) ??
+                      1;
+
+                  _quantityController.text = (v + 1).toString();
+                });
+              },
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _qtyButton(IconData icon, VoidCallback onTap) {
+  Widget _qtyButton(
+    IconData icon,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -594,26 +948,45 @@ class _AddItemScreenState extends State<AddItemScreen> {
           color: AppTheme.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: AppTheme.primary, size: 20),
+        child: Icon(
+          icon,
+          color: AppTheme.primary,
+          size: 20,
+        ),
       ),
     );
   }
+
+  // ============================================================
+  // NOTES
+  // ============================================================
 
   Widget _buildNotesField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _fieldLabel('Notes (optional)'),
+        _fieldLabel(
+          'Notes (optional)',
+        ),
         const SizedBox(height: 8),
         TextFormField(
           controller: _notesController,
           maxLines: 3,
-          style: GoogleFonts.sarabun(fontSize: 14),
-          decoration: _inputDecoration('Add any notes...', Icons.notes_rounded),
+          style: GoogleFonts.sarabun(
+            fontSize: 14,
+          ),
+          decoration: _inputDecoration(
+            'Add any notes...',
+            Icons.notes_rounded,
+          ),
         ),
       ],
     );
   }
+
+  // ============================================================
+  // SAVE BUTTON
+  // ============================================================
 
   Widget _buildSaveButton() {
     return ElevatedButton(
@@ -621,8 +994,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        padding: const EdgeInsets.symmetric(
+          vertical: 16,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         elevation: 0,
       ),
       child: _isLoading
@@ -630,7 +1007,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
               width: 24,
               height: 24,
               child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2),
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
             )
           : Text(
               _isEditing ? 'Save Changes' : 'Add to Fridge',
@@ -642,7 +1021,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
-  Widget _fieldLabel(String label) {
+  Widget _fieldLabel(
+    String label,
+  ) {
     return Text(
       label,
       style: GoogleFonts.sarabun(
@@ -654,86 +1035,160 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint, IconData icon) {
+  InputDecoration _inputDecoration(
+    String hint,
+    IconData icon,
+  ) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.sarabun(color: AppTheme.textSecondary),
-      prefixIcon: Icon(icon, color: AppTheme.primary, size: 20),
+      hintStyle: GoogleFonts.sarabun(
+        color: AppTheme.textSecondary,
+      ),
+      prefixIcon: Icon(
+        icon,
+        color: AppTheme.primary,
+        size: 20,
+      ),
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppTheme.divider),
+        borderRadius: BorderRadius.circular(
+          14,
+        ),
+        borderSide: const BorderSide(
+          color: AppTheme.divider,
+        ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppTheme.divider),
+        borderRadius: BorderRadius.circular(
+          14,
+        ),
+        borderSide: const BorderSide(
+          color: AppTheme.divider,
+        ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+        borderRadius: BorderRadius.circular(
+          14,
+        ),
+        borderSide: const BorderSide(
+          color: AppTheme.primary,
+          width: 1.5,
+        ),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
+      ),
     );
   }
+
+  // ============================================================
+  // DATE PICKER
+  // ============================================================
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _expirationDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 1825)),
+      firstDate: DateTime.now().subtract(
+        const Duration(
+          days: 365,
+        ),
+      ),
+      lastDate: DateTime.now().add(
+        const Duration(
+          days: 1825,
+        ),
+      ),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppTheme.primary),
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.primary,
+            ),
           ),
           child: child!,
         );
       },
     );
-    if (picked != null) setState(() => _expirationDate = picked);
+
+    if (picked != null) {
+      setState(() {
+        _expirationDate = picked;
+      });
+    }
   }
 
-  // ---- Save ----
+  // ============================================================
+  // SAVE
+  // ============================================================
 
   Future<void> _saveItem() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+    });
+
     final provider = context.read<FoodProvider>();
 
-    // ส่ง path ให้ provider: ถ้าเลือกรูปใหม่ใช้ XFile.path ถ้าไม่มีใช้ URL เดิม
-    final imagePath = _pickedImage?.path ?? _existingImagePath;
-
     try {
+      final imagePath = await _getImageStorageValue();
+
       if (_isEditing) {
         final updated = widget.existingItem!.copyWith(
           name: _nameController.text.trim(),
           category: _selectedCategory,
           expirationDate: _expirationDate,
-          quantity: int.tryParse(_quantityController.text) ?? 1,
+          quantity: int.tryParse(
+                _quantityController.text,
+              ) ??
+              1,
           notes: _notesController.text.trim().isEmpty
               ? null
               : _notesController.text.trim(),
           imagePath: imagePath,
         );
-        await provider.updateItem(updated);
+
+        await provider.updateItem(
+          updated,
+        );
       } else {
         await provider.addItem(
           name: _nameController.text.trim(),
           category: _selectedCategory,
           expirationDate: _expirationDate,
-          quantity: int.tryParse(_quantityController.text) ?? 1,
+          quantity: int.tryParse(
+                _quantityController.text,
+              ) ??
+              1,
           notes: _notesController.text.trim().isEmpty
               ? null
               : _notesController.text.trim(),
           imagePath: imagePath,
         );
       }
-      if (mounted) Navigator.pop(context);
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        _showSnack(
+          'Could not save item: $e',
+        );
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 }

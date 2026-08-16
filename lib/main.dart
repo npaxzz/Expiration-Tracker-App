@@ -2,29 +2,79 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'models/food_provider.dart';
+import 'models/notification_service.dart';
+import 'services/background_service.dart';
+
 import 'screens/home_screen.dart';
 import 'screens/scan_screen.dart';
 import 'screens/alerts_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/recipe_screen.dart';
+
 import 'theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
-  runApp(const MyApp());
+
+  // ============================================================
+  // HIVE
+  // ============================================================
+
+  await FoodProvider.initHive();
+
+  // ============================================================
+  // NOTIFICATION
+  // ============================================================
+
+  await NotificationService.init();
+
+  // ============================================================
+  // BACKGROUND SERVICE
+  // ============================================================
+
+  await BackgroundService.init();
+
+  await BackgroundService.scheduleDailyCheck();
+
+  // ============================================================
+  // DAILY 9 AM NOTIFICATION
+  // ============================================================
+
+  await NotificationService.scheduleDailySummary();
+
+  // ============================================================
+  // SYSTEM UI
+  // ============================================================
+
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
+
+  // ============================================================
+  // APP
+  // ============================================================
+
+  runApp(
+    const MyApp(),
+  );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({
+    super.key,
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return ChangeNotifierProvider(
-      create: (_) => FoodProvider(),
+      create: (_) => FoodProvider()..init(),
       child: MaterialApp(
         title: 'Smart Expiration Tracker',
         theme: AppTheme.theme,
@@ -36,7 +86,9 @@ class MyApp extends StatelessWidget {
 }
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+  const MainNavigation({
+    super.key,
+  });
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
@@ -48,11 +100,14 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _screens = const [
     HomeScreen(),
     AlertsScreen(),
+    RecipeScreen(),
     SettingsScreen(),
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
@@ -72,12 +127,17 @@ class _MainNavigationState extends State<MainNavigation> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
+          colors: [
+            Color(0xFF2E7D32),
+            Color(0xFF1B5E20),
+          ],
         ),
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withValues(alpha: 0.4),
+            color: const Color(0xFF1B5E20).withValues(
+              alpha: 0.4,
+            ),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -86,11 +146,17 @@ class _MainNavigationState extends State<MainNavigation> {
       child: FloatingActionButton(
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const ScanScreen()),
+          MaterialPageRoute(
+            builder: (_) => const ScanScreen(),
+          ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: const Icon(Icons.add_rounded, size: 30, color: Colors.white),
+        child: const Icon(
+          Icons.add_rounded,
+          size: 30,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -101,26 +167,47 @@ class _MainNavigationState extends State<MainNavigation> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withValues(
+              alpha: 0.08,
+            ),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
         ],
       ),
       child: SafeArea(
-        child: Container(
+        child: SizedBox(
           height: 70,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(0, Icons.home_rounded, Icons.home_outlined, 'Home'),
-              _navItem(1, Icons.notifications_rounded,
-                  Icons.notifications_none_rounded, 'Alerts'),
-              const SizedBox(width: 60),
-              _navItem(2, Icons.settings_rounded, Icons.settings_outlined,
-                  'Settings'),
-              const SizedBox(width: 8),
+              _navItem(
+                0,
+                Icons.home_rounded,
+                Icons.home_outlined,
+                'Home',
+              ),
+              _navItem(
+                1,
+                Icons.notifications_rounded,
+                Icons.notifications_none_rounded,
+                'Alerts',
+              ),
+              const SizedBox(
+                width: 60,
+              ),
+              _navItem(
+                2,
+                Icons.restaurant_menu_rounded,
+                Icons.restaurant_menu_outlined,
+                'Recipes',
+              ),
+              _navItem(
+                3,
+                Icons.settings_rounded,
+                Icons.settings_outlined,
+                'Settings',
+              ),
             ],
           ),
         ),
@@ -129,35 +216,63 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   Widget _navItem(
-      int index, IconData activeIcon, IconData inactiveIcon, String label) {
+    int index,
+    IconData activeIcon,
+    IconData inactiveIcon,
+    String label,
+  ) {
     final isSelected = _selectedIndex == index;
+
     return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
+      onTap: () {
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        duration: const Duration(
+          milliseconds: 200,
+        ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 8,
+        ),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.primary.withValues(alpha: 0.08)
+              ? AppTheme.primary.withValues(
+                  alpha: 0.08,
+                )
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(
+            12,
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               isSelected ? activeIcon : inactiveIcon,
-              color: isSelected ? AppTheme.primary : const Color(0xFFB0BEC5),
+              color: isSelected
+                  ? AppTheme.primary
+                  : const Color(
+                      0xFFB0BEC5,
+                    ),
               size: 24,
             ),
-            const SizedBox(height: 3),
+            const SizedBox(
+              height: 3,
+            ),
             Text(
               label,
               style: GoogleFonts.sarabun(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                color: isSelected ? AppTheme.primary : const Color(0xFFB0BEC5),
+                color: isSelected
+                    ? AppTheme.primary
+                    : const Color(
+                        0xFFB0BEC5,
+                      ),
               ),
             ),
           ],

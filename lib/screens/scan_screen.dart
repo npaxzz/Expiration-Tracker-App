@@ -224,8 +224,9 @@ class _ScanScreenState extends State<ScanScreen> {
         // Photo 1 — optional
         _buildSlot(
           slot: 1,
-          title: 'Expiry Date',
-          subtitle: 'Add images with an expiration date',
+          title: 'Product',
+          subtitle:
+              'Add an image showing the overall appearance of the product',
           color: const Color(0xFF1565C0),
           lightColor: const Color(0xFFE3F2FD),
           image: _image1,
@@ -236,9 +237,8 @@ class _ScanScreenState extends State<ScanScreen> {
         // Photo 2 — optional
         _buildSlot(
           slot: 2,
-          title: 'Product',
-          subtitle:
-              'Add an image showing the overall appearance of the product',
+          title: 'Expiry Date',
+          subtitle: 'Add images with an expiration date',
           color: const Color(0xFF6A1B9A),
           lightColor: const Color(0xFFF3E5F5),
           image: _image2,

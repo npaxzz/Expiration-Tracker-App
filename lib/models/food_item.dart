@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+
+part 'food_item.g.dart';
 
 enum FoodCategory {
   fruitsVegetables,
@@ -49,7 +52,7 @@ extension FoodCategoryExtension on FoodCategory {
       case FoodCategory.fruitsVegetables:
         return const Color(0xFF4CAF50);
       case FoodCategory.eggsDairy:
-        return const Color(0xFFFFF176).withValues(alpha: 1);
+        return const Color(0xFFFDD835);
       case FoodCategory.meatFrozen:
         return const Color(0xFFEF5350);
       case FoodCategory.dryFood:
@@ -79,20 +82,44 @@ extension FoodCategoryExtension on FoodCategory {
   }
 }
 
-class FoodItem {
-  final String id;
+@HiveType(typeId: 0)
+class FoodItem extends HiveObject {
+  @HiveField(0)
+  String id;
+
+  @HiveField(1)
   String name;
-  FoodCategory category;
+
+  @HiveField(2)
+  int categoryIndex;
+
+  @HiveField(3)
   DateTime expirationDate;
+
+  @HiveField(4)
   DateTime addedDate;
+
+  @HiveField(5)
   int quantity;
+
+  @HiveField(6)
   String? notes;
+
+  /// สามารถเก็บได้ทั้ง:
+  ///
+  /// 1. Base64 image
+  ///    image_base64:<base64>
+  ///
+  /// 2. Local file path ของข้อมูลเก่า
+  ///
+  /// 3. URL ของข้อมูลเก่า
+  ///
   String? imagePath;
 
   FoodItem({
     required this.id,
     required this.name,
-    required this.category,
+    required this.categoryIndex,
     required this.expirationDate,
     DateTime? addedDate,
     this.quantity = 1,
@@ -100,54 +127,52 @@ class FoodItem {
     this.imagePath,
   }) : addedDate = addedDate ?? DateTime.now();
 
+  FoodCategory get category => FoodCategory.values[categoryIndex];
+
+  set category(FoodCategory c) {
+    categoryIndex = c.index;
+  }
+
   int get daysUntilExpiration {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+
+    final today = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    );
+
     final expiry = DateTime(
       expirationDate.year,
       expirationDate.month,
       expirationDate.day,
     );
+
     return expiry.difference(today).inDays;
   }
 
   bool get isExpired => daysUntilExpiration < 0;
+
   bool get isExpiringSoon =>
       daysUntilExpiration >= 0 && daysUntilExpiration <= 3;
+
   bool get isExpiringThisWeek =>
       daysUntilExpiration >= 0 && daysUntilExpiration <= 7;
 
   ExpirationStatus get status {
-    if (isExpired) return ExpirationStatus.expired;
-    if (isExpiringSoon) return ExpirationStatus.soon;
-    if (isExpiringThisWeek) return ExpirationStatus.thisWeek;
+    if (isExpired) {
+      return ExpirationStatus.expired;
+    }
+
+    if (isExpiringSoon) {
+      return ExpirationStatus.soon;
+    }
+
+    if (isExpiringThisWeek) {
+      return ExpirationStatus.thisWeek;
+    }
+
     return ExpirationStatus.good;
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'category': category.index,
-      'expirationDate': expirationDate.toIso8601String(),
-      'addedDate': addedDate.toIso8601String(),
-      'quantity': quantity,
-      'notes': notes,
-      'imagePath': imagePath,
-    };
-  }
-
-  factory FoodItem.fromMap(Map<String, dynamic> map) {
-    return FoodItem(
-      id: map['id'],
-      name: map['name'],
-      category: FoodCategory.values[map['category']],
-      expirationDate: DateTime.parse(map['expirationDate']),
-      addedDate: DateTime.parse(map['addedDate']),
-      quantity: map['quantity'] ?? 1,
-      notes: map['notes'],
-      imagePath: map['imagePath'],
-    );
   }
 
   FoodItem copyWith({
@@ -161,7 +186,7 @@ class FoodItem {
     return FoodItem(
       id: id,
       name: name ?? this.name,
-      category: category ?? this.category,
+      categoryIndex: category?.index ?? categoryIndex,
       expirationDate: expirationDate ?? this.expirationDate,
       addedDate: addedDate,
       quantity: quantity ?? this.quantity,
@@ -171,17 +196,25 @@ class FoodItem {
   }
 }
 
-enum ExpirationStatus { expired, soon, thisWeek, good }
+enum ExpirationStatus {
+  expired,
+  soon,
+  thisWeek,
+  good,
+}
 
 extension ExpirationStatusExtension on ExpirationStatus {
   Color get color {
     switch (this) {
       case ExpirationStatus.expired:
         return const Color(0xFFE53935);
+
       case ExpirationStatus.soon:
         return const Color(0xFFF57C00);
+
       case ExpirationStatus.thisWeek:
         return const Color(0xFFFBC02D);
+
       case ExpirationStatus.good:
         return const Color(0xFF43A047);
     }
@@ -191,10 +224,13 @@ extension ExpirationStatusExtension on ExpirationStatus {
     switch (this) {
       case ExpirationStatus.expired:
         return 'Expired';
+
       case ExpirationStatus.soon:
         return 'Soon';
+
       case ExpirationStatus.thisWeek:
         return 'This Week';
+
       case ExpirationStatus.good:
         return 'Fresh';
     }

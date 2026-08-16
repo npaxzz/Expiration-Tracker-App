@@ -1,17 +1,26 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+
 import '../models/food_provider.dart';
 import '../models/food_item.dart';
 import '../theme/app_theme.dart';
 import 'item_detail_screen.dart';
 
 class AlertsScreen extends StatelessWidget {
-  const AlertsScreen({super.key});
+  const AlertsScreen({
+    super.key,
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
@@ -29,6 +38,7 @@ class AlertsScreen extends StatelessWidget {
       body: Consumer<FoodProvider>(
         builder: (context, provider, _) {
           final expired = provider.expiredItems;
+
           final soon = provider.expiringSoonItems;
 
           if (expired.isEmpty && soon.isEmpty) {
@@ -36,7 +46,9 @@ class AlertsScreen extends StatelessWidget {
           }
 
           return ListView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(
+              20,
+            ),
             children: [
               if (expired.isNotEmpty) ...[
                 _buildSectionHeader(
@@ -44,9 +56,18 @@ class AlertsScreen extends StatelessWidget {
                   '${expired.length} item${expired.length > 1 ? 's' : ''}',
                   AppTheme.expiredColor,
                 ),
-                const SizedBox(height: 10),
-                ...expired.map((item) => _buildAlertCard(context, item)),
-                const SizedBox(height: 20),
+                const SizedBox(
+                  height: 10,
+                ),
+                ...expired.map(
+                  (item) => _buildAlertCard(
+                    context,
+                    item,
+                  ),
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
               ],
               if (soon.isNotEmpty) ...[
                 _buildSectionHeader(
@@ -54,8 +75,15 @@ class AlertsScreen extends StatelessWidget {
                   '${soon.length} item${soon.length > 1 ? 's' : ''}',
                   AppTheme.soonColor,
                 ),
-                const SizedBox(height: 10),
-                ...soon.map((item) => _buildAlertCard(context, item)),
+                const SizedBox(
+                  height: 10,
+                ),
+                ...soon.map(
+                  (item) => _buildAlertCard(
+                    context,
+                    item,
+                  ),
+                ),
               ],
             ],
           );
@@ -64,7 +92,15 @@ class AlertsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, String count, Color color) {
+  // ============================================================
+  // SECTION HEADER
+  // ============================================================
+
+  Widget _buildSectionHeader(
+    String title,
+    String count,
+    Color color,
+  ) {
     return Row(
       children: [
         Text(
@@ -75,12 +111,21 @@ class AlertsScreen extends StatelessWidget {
             color: AppTheme.textPrimary,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(
+          width: 8,
+        ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 3,
+          ),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(20),
+            color: color.withValues(
+              alpha: 0.12,
+            ),
+            borderRadius: BorderRadius.circular(
+              20,
+            ),
           ),
           child: Text(
             count,
@@ -95,25 +140,51 @@ class AlertsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAlertCard(BuildContext context, FoodItem item) {
+  // ============================================================
+  // ALERT CARD
+  // ============================================================
+
+  Widget _buildAlertCard(
+    BuildContext context,
+    FoodItem item,
+  ) {
     final days = item.daysUntilExpiration;
+
     final color = item.status.color;
 
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => ItemDetailScreen(item: item)),
-      ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ItemDetailScreen(
+              item: item,
+            ),
+          ),
+        );
+      },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(
+          bottom: 10,
+        ),
+        padding: const EdgeInsets.all(
+          16,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(
+            16,
+          ),
+          border: Border.all(
+            color: color.withValues(
+              alpha: 0.3,
+            ),
+          ),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.08),
+              color: color.withValues(
+                alpha: 0.08,
+              ),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -121,21 +192,12 @@ class AlertsScreen extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: item.category.lightColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  item.category.emoji,
-                  style: const TextStyle(fontSize: 22),
-                ),
-              ),
+            _buildItemImage(
+              item,
             ),
-            const SizedBox(width: 14),
+            const SizedBox(
+              width: 14,
+            ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,7 +210,9 @@ class AlertsScreen extends StatelessWidget {
                       color: AppTheme.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(
+                    height: 3,
+                  ),
                   Text(
                     days < 0
                         ? 'Expired ${days.abs()} days ago'
@@ -162,7 +226,11 @@ class AlertsScreen extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    DateFormat('d MMM yyyy').format(item.expirationDate),
+                    DateFormat(
+                      'd MMM yyyy',
+                    ).format(
+                      item.expirationDate,
+                    ),
                     style: GoogleFonts.sarabun(
                       fontSize: 12,
                       color: AppTheme.textSecondary,
@@ -172,10 +240,17 @@ class AlertsScreen extends StatelessWidget {
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 5,
+              ),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: color.withValues(
+                  alpha: 0.1,
+                ),
+                borderRadius: BorderRadius.circular(
+                  8,
+                ),
               ),
               child: Text(
                 'Qty: ${item.quantity}',
@@ -192,6 +267,156 @@ class AlertsScreen extends StatelessWidget {
     );
   }
 
+  // ============================================================
+  // IMAGE
+  // ============================================================
+
+  Widget _buildItemImage(
+    FoodItem item,
+  ) {
+    final path = item.imagePath;
+
+    if (path == null || path.isEmpty) {
+      return _buildEmojiImage(
+        item,
+      );
+    }
+
+    // ----------------------------------------------------------
+    // BASE64
+    // ----------------------------------------------------------
+
+    if (path.startsWith(
+      'image_base64:',
+    )) {
+      try {
+        final base64String = path.substring(
+          'image_base64:'.length,
+        );
+
+        final bytes = base64Decode(
+          base64String,
+        );
+
+        return Container(
+          width: 56,
+          height: 56,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(
+              12,
+            ),
+          ),
+          child: Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) {
+              return _buildEmojiImage(
+                item,
+              );
+            },
+          ),
+        );
+      } catch (_) {
+        return _buildEmojiImage(
+          item,
+        );
+      }
+    }
+
+    // ----------------------------------------------------------
+    // URL
+    // ----------------------------------------------------------
+
+    if (path.startsWith(
+          'http://',
+        ) ||
+        path.startsWith(
+          'https://',
+        )) {
+      return Container(
+        width: 56,
+        height: 56,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(
+            12,
+          ),
+        ),
+        child: Image.network(
+          path,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) {
+            return _buildEmojiImage(
+              item,
+            );
+          },
+        ),
+      );
+    }
+
+    // ----------------------------------------------------------
+    // LOCAL FILE
+    // ----------------------------------------------------------
+
+    if (!kIsWeb) {
+      return Container(
+        width: 56,
+        height: 56,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(
+            12,
+          ),
+        ),
+        child: Image.file(
+          File(path),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) {
+            return _buildEmojiImage(
+              item,
+            );
+          },
+        ),
+      );
+    }
+
+    return _buildEmojiImage(
+      item,
+    );
+  }
+
+  // ============================================================
+  // FALLBACK EMOJI
+  // ============================================================
+
+  Widget _buildEmojiImage(
+    FoodItem item,
+  ) {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: item.category.lightColor,
+        borderRadius: BorderRadius.circular(
+          12,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          item.category.emoji,
+          style: const TextStyle(
+            fontSize: 22,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // EMPTY
+  // ============================================================
+
   Widget _buildAllGoodState() {
     return Center(
       child: Column(
@@ -201,7 +426,9 @@ class AlertsScreen extends StatelessWidget {
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: AppTheme.freshColor.withValues(alpha: 0.1),
+              color: AppTheme.freshColor.withValues(
+                alpha: 0.1,
+              ),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -210,7 +437,9 @@ class AlertsScreen extends StatelessWidget {
               size: 50,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(
+            height: 20,
+          ),
           Text(
             'All Good! 🎉',
             style: GoogleFonts.sarabun(
@@ -219,7 +448,9 @@ class AlertsScreen extends StatelessWidget {
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(
+            height: 10,
+          ),
           Text(
             'No expiring items right now.\nYour fridge is in great shape!',
             textAlign: TextAlign.center,
