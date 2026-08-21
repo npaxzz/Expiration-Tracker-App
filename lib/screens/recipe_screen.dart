@@ -657,17 +657,17 @@ class _RecipeScreenState extends State<RecipeScreen> {
                 ),
               ),
               const SizedBox(height: 6),
-              Row(
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
                 children: [
-                  if (recipe.expiringIngredientsUsed > 0) ...[
+                  if (recipe.expiringIngredientsUsed > 0)
                     _miniChip(
                       '⏰ Uses '
                       '${recipe.expiringIngredientsUsed} '
                       'expiring',
                       AppTheme.soonColor,
                     ),
-                    const SizedBox(width: 6),
-                  ],
                   if (recipe.needsExtraIngredients)
                     _miniChip(
                       '🛒 Buy '

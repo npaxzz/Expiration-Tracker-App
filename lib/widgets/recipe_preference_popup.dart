@@ -22,15 +22,12 @@ class RecipePreferencePopup extends StatefulWidget {
 }
 
 class _RecipePreferencePopupState extends State<RecipePreferencePopup> {
-  static const String noPreference = 'No preference';
-
   final List<String> _tasteOptions = const [
     'Spicy',
     'Sweet',
     'Salty',
     'Sour',
     'Well-balanced',
-    noPreference,
   ];
 
   final List<String> _cuisineOptions = const [
@@ -39,7 +36,6 @@ class _RecipePreferencePopupState extends State<RecipePreferencePopup> {
     '🇰🇷 Korean',
     '🇨🇳 Chinese',
     '🌎 Western',
-    noPreference,
   ];
 
   final List<String> _menuTypeOptions = const [
@@ -47,31 +43,19 @@ class _RecipePreferencePopupState extends State<RecipePreferencePopup> {
     '🍜 Noodles',
     '🥘 Soup / Curry',
     '🥗 Light meal',
-    noPreference,
   ];
 
   final Set<String> _selectedTastes = {};
   final Set<String> _selectedCuisines = {};
   final Set<String> _selectedMenuTypes = {};
 
-  /// "No preference" clears every other choice in that category (and vice versa).
+  /// Plain multi-select toggle for a chip within a given category.
   void _toggle(Set<String> selectedSet, String option) {
     setState(() {
-      if (option == noPreference) {
-        if (selectedSet.contains(noPreference)) {
-          selectedSet.remove(noPreference);
-        } else {
-          selectedSet
-            ..clear()
-            ..add(noPreference);
-        }
+      if (selectedSet.contains(option)) {
+        selectedSet.remove(option);
       } else {
-        selectedSet.remove(noPreference);
-        if (selectedSet.contains(option)) {
-          selectedSet.remove(option);
-        } else {
-          selectedSet.add(option);
-        }
+        selectedSet.add(option);
       }
     });
   }

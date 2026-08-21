@@ -197,7 +197,17 @@ class RecipeService {
       return [];
     }
 
-    final expiring = items
+    // ----------------------------------------------------------
+    // ตัดของที่หมดอายุไปแล้วออกก่อนเลย ไม่ส่งเข้า Gemini
+    // เพื่อไม่ให้ถูกแนะนำเป็นวัตถุดิบในสูตรอาหาร
+    // ----------------------------------------------------------
+    final validItems = items.where((item) => !item.isExpired).toList();
+
+    if (validItems.isEmpty) {
+      return [];
+    }
+
+    final expiring = validItems
         .where(
           (item) => item.isExpiringSoon || item.isExpiringThisWeek,
         )
@@ -208,7 +218,7 @@ class RecipeService {
         ),
       );
 
-    final others = items
+    final others = validItems
         .where(
           (item) => !item.isExpiringSoon && !item.isExpiringThisWeek,
         )
@@ -259,6 +269,8 @@ IMPORTANT:
 - If a recipe can be made without buying anything, prefer it.
 - Do not add unnecessary missing ingredients.
 - Only put ingredients not in the available list into missing_ingredients.
+- NEVER suggest using an ingredient that has already expired. Only the
+  ingredients listed above (EXPIRING SOON and OTHER AVAILABLE) are safe to use.
 
 Respond ONLY with a valid JSON array, no markdown, no explanation:
 
