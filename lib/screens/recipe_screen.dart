@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/food_provider.dart';
+import '../models/recipe_preference.dart';
 import '../services/recipe_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/recipe_preference_popup.dart';
 
 class RecipeScreen extends StatefulWidget {
   const RecipeScreen({super.key});
@@ -81,8 +83,32 @@ class _RecipeScreenState extends State<RecipeScreen> {
   }
 
   // ============================================================
-  // GEMINI
+  // PREFERENCE POPUP -> GEMINI
   // ============================================================
+
+  /// จุดเข้าเดียวสำหรับทุกปุ่มที่ต้อง "ยิง Gemini ใหม่"
+  /// (Find Recipes / Refresh / Try Again)
+  ///
+  /// เปิด popup ถามความต้องการก่อนเสมอ ถ้าผู้ใช้กด Cancel
+  /// จะไม่เรียก Gemini เลย
+  Future<void> _onRequestNewRecipes() async {
+    if (_isLoading) return;
+
+    final RecipePreference? preference =
+        await showRecipePreferencePopup(context);
+
+    if (preference == null) {
+      // ผู้ใช้ปิด popup โดยไม่กด "Find Recipes"
+      return;
+    }
+
+    if (!mounted) return;
+
+    await _loadRecipes(
+      forceRefresh: true,
+      preference: preference,
+    );
+  }
 
   /// เรียก Gemini ใหม่
   ///
@@ -93,6 +119,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
   /// จะตรวจวัตถุดิบเฉพาะตอนผู้ใช้กดค้นหา
   Future<void> _loadRecipes({
     bool forceRefresh = false,
+    RecipePreference? preference,
   }) async {
     if (_isLoading) return;
 
@@ -131,6 +158,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
       final recipes = await RecipeService.getRecommendations(
         provider.allSorted,
         count: 3,
+        preference: preference,
       );
 
       if (!mounted) return;
@@ -218,14 +246,8 @@ class _RecipeScreenState extends State<RecipeScreen> {
               color: AppTheme.primary,
             ),
 
-            // Refresh = บังคับหาใหม่
-            onPressed: _isLoading
-                ? null
-                : () {
-                    _loadRecipes(
-                      forceRefresh: true,
-                    );
-                  },
+            // Refresh = ถามความต้องการใหม่ แล้วบังคับหาใหม่
+            onPressed: _isLoading ? null : _onRequestNewRecipes,
 
             tooltip: 'Get new suggestions',
           ),
@@ -343,13 +365,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: _isLoading
-                  ? null
-                  : () {
-                      _loadRecipes(
-                        forceRefresh: true,
-                      );
-                    },
+              onPressed: _isLoading ? null : _onRequestNewRecipes,
               icon: const Icon(
                 Icons.refresh_rounded,
               ),
@@ -412,13 +428,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
-              onPressed: _isLoading
-                  ? null
-                  : () {
-                      _loadRecipes(
-                        forceRefresh: true,
-                      );
-                    },
+              onPressed: _isLoading ? null : _onRequestNewRecipes,
               icon: const Icon(
                 Icons.restaurant_menu_rounded,
               ),

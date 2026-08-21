@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'ai_config.dart';
 import 'expiry_defaults.dart';
@@ -151,7 +152,6 @@ Instructions:
       );
     } catch (e) {
       if (retry > 0) {
-        print('### Retrying Gemini...');
         await Future.delayed(const Duration(seconds: 2));
         return _callGeminiWithRetry(
           labelBase64: labelBase64,
@@ -178,8 +178,7 @@ Instructions:
 
       return jsonDecode(clean) as Map<String, dynamic>;
     } catch (e) {
-      print('### JSON parse error: $e');
-      print('### Raw text: $text');
+      debugPrint('### JSON parse error: $e');
 
       return {
         "product_name": "Unknown Product",

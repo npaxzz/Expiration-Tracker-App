@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../models/food_item.dart';
 import '../models/ai_config.dart';
 import '../models/recipe_cache.dart';
+import '../models/recipe_preference.dart';
 
 class RecipeRateLimitException implements Exception {
   final String message;
@@ -184,9 +185,13 @@ class RecipeService {
   /// ฟังก์ชันนี้จะยิง Gemini ก็ต่อเมื่อถูกเรียกโดยตรง
   ///
   /// ไม่ได้ถูกเรียกอัตโนมัติจาก FoodProvider
+  ///
+  /// [preference] เป็น optional — ถ้าผู้ใช้เลือกความต้องการจาก popup
+  /// (รสชาติ / สไตล์อาหาร / ประเภทเมนู) จะถูกแทรกเข้าไปในพรอมต์ที่ส่งให้ Gemini
   static Future<List<RecipeRecommendation>> getRecommendations(
     List<FoodItem> items, {
     int count = 3,
+    RecipePreference? preference,
   }) async {
     if (items.isEmpty) {
       return [];
@@ -218,6 +223,20 @@ class RecipeService {
 
     final otherList = others.map((e) => e.name).join(', ');
 
+    // ----------------------------------------------------------
+    // เติมส่วนของ user preference เข้าไปในพรอมต์ (ถ้ามี)
+    // ----------------------------------------------------------
+    final bool hasPreference = preference != null && !preference.isEmpty;
+
+    final preferenceBlock = hasPreference
+        ? '''
+
+USER PREFERENCES (please respect these as much as possible,
+while still following the ingredient priority rules above):
+${preference.toPromptText()}
+'''
+        : '';
+
     final prompt = '''
 You are a helpful chef. I have these food items in my fridge:
 
@@ -226,13 +245,14 @@ ${expiringList.isEmpty ? 'None' : expiringList}
 
 OTHER AVAILABLE INGREDIENTS:
 ${otherList.isEmpty ? 'None' : otherList}
-
+$preferenceBlock
 Please suggest $count recipes that:
 1. PRIORITIZE using the expiring ingredients
 2. Use as many available ingredients as possible
 3. Minimize the number of missing ingredients to buy
 4. Prefer recipes that require NO additional ingredients when possible
 5. Are practical and easy to cook
+${hasPreference ? '6. Match the USER PREFERENCES above whenever it does not conflict with rules 1-4' : ''}
 
 IMPORTANT:
 - Prefer recipes that can be made entirely from available ingredients.
@@ -263,10 +283,6 @@ Rules:
 ''';
 
     try {
-      debugPrint(
-        'Model: ${AiConfig.geminiModel}',
-      );
-
       final url = Uri.parse(
         '$_baseUrl/'
         '${AiConfig.geminiModel}'
@@ -286,7 +302,41 @@ Rules:
         ],
         'generationConfig': {
           'temperature': 0.7,
-          'maxOutputTokens': 4096,
+          'maxOutputTokens': 8192,
+          // ----------------------------------------------------
+          // บังคับให้ Gemini ตอบเป็น JSON ที่ valid ตาม schema เสมอ
+          // (structured output) แทนการขอความร่วมมือผ่าน prompt เฉย ๆ
+          // แก้ปัญหา "Unterminated string" / markdown fences / ตัดคำ
+          // ----------------------------------------------------
+          'responseMimeType': 'application/json',
+          'responseSchema': {
+            'type': 'ARRAY',
+            'items': {
+              'type': 'OBJECT',
+              'properties': {
+                'title': {'type': 'STRING'},
+                'description': {'type': 'STRING'},
+                'used_ingredients': {
+                  'type': 'ARRAY',
+                  'items': {'type': 'STRING'},
+                },
+                'missing_ingredients': {
+                  'type': 'ARRAY',
+                  'items': {'type': 'STRING'},
+                },
+                'instructions': {'type': 'STRING'},
+                'expiring_ingredients_used': {'type': 'INTEGER'},
+              },
+              'required': [
+                'title',
+                'description',
+                'used_ingredients',
+                'missing_ingredients',
+                'instructions',
+                'expiring_ingredients_used',
+              ],
+            },
+          },
         }
       });
 
@@ -343,10 +393,23 @@ Rules:
 
       final text = parts[0]['text'] as String;
 
+      // Kept as a harmless fallback in case the model ever wraps the
+      // response in markdown fences despite responseMimeType being set.
       final cleaned =
           text.replaceAll('```json', '').replaceAll('```', '').trim();
 
-      final List<dynamic> jsonList = jsonDecode(cleaned);
+      List<dynamic> jsonList;
+      try {
+        jsonList = jsonDecode(cleaned);
+      } on FormatException catch (e) {
+        debugPrint(
+          'RECIPE SERVICE: malformed JSON from Gemini: $e',
+        );
+        debugPrint(
+          'RECIPE SERVICE: raw text was:\n$cleaned',
+        );
+        rethrow;
+      }
 
       final recipes = jsonList
           .map(
