@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/ai_config.dart';
-import '../models/ai_service.dart';
 import '../models/scan_result.dart';
 import '../models/vlm_service.dart';
 import '../theme/app_theme.dart';
@@ -136,17 +135,10 @@ class _ScanScreenState extends State<ScanScreen> {
       final primary = _primaryImage;
       final secondary = _secondaryImage;
 
-      if (AiConfig.useVlm) {
-        result = await VlmService.analyze(
-          labelImagePath: primary,
-          productImagePath: secondary ?? primary,
-        );
-      } else {
-        result = await AiService.analyze(
-          labelImagePath: primary,
-          productImagePath: secondary ?? primary,
-        );
-      }
+      result = await VlmService.analyze(
+        labelImagePath: primary,
+        productImagePath: secondary ?? primary,
+      );
       if (!mounted) return;
       setState(() => _isAnalyzing = false);
       Navigator.push(
@@ -210,9 +202,7 @@ class _ScanScreenState extends State<ScanScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                AiConfig.useVlm
-                    ? 'Add 1 photo minimum — AI detects name, category & expiry date   — If No expiry label, will estimate based on category\nAdd a 2nd photo if label and product are in separate images'
-                    : 'Add 1–2 photos for OCR & Image Classification\nNo expiry label? Default date will be used',
+                'Add 1 photo minimum — AI detects name, category & expiry date   — If No expiry label, will estimate based on category\nAdd a 2nd photo if label and product are in separate images',
                 style: GoogleFonts.sarabun(
                     fontSize: 13, color: AppTheme.primary, height: 1.5),
               ),

@@ -95,11 +95,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Widget _buildAiBadge() {
-    final isVlm = AiConfig.useVlm;
-    final engineLabel = isVlm ? 'Gemini Vision' : 'OCR + Image Class';
-    final engineIcon =
-        isVlm ? Icons.auto_awesome_rounded : Icons.document_scanner_rounded;
-    final engineColor = isVlm ? const Color(0xFF1565C0) : AppTheme.primary;
+    const engineLabel = 'Gemini Vision';
+    const engineIcon = Icons.auto_awesome_rounded;
+    const engineColor = Color(0xFF1565C0);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -153,24 +151,18 @@ class _ReviewScreenState extends State<ReviewScreen> {
           const SizedBox(height: 10),
           Row(children: [
             _chip(
-              isVlm
-                  ? Icons.auto_awesome_rounded
-                  : Icons.document_scanner_rounded,
-              isVlm
-                  ? (widget.scanResult.ocrFoundDate
-                      ? 'Expiry: detected'
-                      : 'Expiry: not found → default')
-                  : (widget.scanResult.ocrFoundDate
-                      ? 'OCR: Date found'
-                      : 'OCR: Using default'),
+              Icons.auto_awesome_rounded,
+              widget.scanResult.ocrFoundDate
+                  ? 'Expiry: detected'
+                  : 'Expiry: not found → default',
               widget.scanResult.ocrFoundDate
                   ? AppTheme.freshColor
                   : AppTheme.soonColor,
             ),
             const SizedBox(width: 8),
             _chip(
-              isVlm ? Icons.category_rounded : Icons.camera_enhance_rounded,
-              isVlm ? 'Category: detected' : 'Image Class: detected',
+              Icons.category_rounded,
+              'Category: detected',
               engineColor,
             ),
           ]),
