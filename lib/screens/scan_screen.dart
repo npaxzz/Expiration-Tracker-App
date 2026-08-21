@@ -1,9 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import '../models/ai_config.dart';
 import '../models/scan_result.dart';
 import '../models/vlm_service.dart';
 import '../theme/app_theme.dart';
@@ -45,6 +45,7 @@ class _ScanScreenState extends State<ScanScreen> {
           _image2 = picked;
       });
     } catch (e) {
+      debugPrint('### pickImage error: $e');
       _showSnack('Could not open camera/gallery');
     }
   }
@@ -307,7 +308,23 @@ class _ScanScreenState extends State<ScanScreen> {
         child: hasImage
             ? Stack(fit: StackFit.expand, children: [
                 kIsWeb
-                    ? Image.network(image.path, fit: BoxFit.cover)
+                    ? FutureBuilder<Uint8List>(
+                        future: image.readAsBytes(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: AppTheme.primary,
+                                strokeWidth: 2,
+                              ),
+                            );
+                          }
+                          return Image.memory(
+                            snapshot.data!,
+                            fit: BoxFit.cover,
+                          );
+                        },
+                      )
                     : Image.file(File(image.path), fit: BoxFit.cover),
                 Positioned(
                   bottom: 0,

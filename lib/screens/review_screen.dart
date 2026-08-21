@@ -1,12 +1,14 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../models/ai_config.dart';
 import '../models/scan_result.dart';
 import '../models/food_item.dart';
 import '../models/food_provider.dart';
@@ -462,7 +464,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Future<String?> _saveImagePermanently(String? tempPath) async {
     if (tempPath == null) return null;
-    if (kIsWeb) return tempPath;
+    if (kIsWeb) {
+      try {
+        final response = await http.get(Uri.parse(tempPath));
+        final base64Image = base64Encode(response.bodyBytes);
+        return 'image_base64:$base64Image';
+      } catch (e) {
+        debugPrint('### saveImagePermanently ERROR: $e');
+        return null;
+      }
+    }
     try {
       final appDir = await getApplicationDocumentsDirectory();
       final fileName = 'food_${DateTime.now().millisecondsSinceEpoch}.jpg';

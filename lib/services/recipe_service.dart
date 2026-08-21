@@ -263,7 +263,6 @@ Rules:
 ''';
 
     try {
-      debugPrint('CALLING GEMINI...');
       debugPrint(
         'Model: ${AiConfig.geminiModel}',
       );
@@ -297,10 +296,6 @@ Rules:
           'Content-Type': 'application/json',
         },
         body: body,
-      );
-
-      debugPrint(
-        'GEMINI RESPONSE: ${response.statusCode}',
       );
 
       // --------------------------------------------------------
@@ -347,10 +342,6 @@ Rules:
       }
 
       final text = parts[0]['text'] as String;
-
-      debugPrint(
-        'GEMINI RAW TEXT:\n$text',
-      );
 
       final cleaned =
           text.replaceAll('```json', '').replaceAll('```', '').trim();

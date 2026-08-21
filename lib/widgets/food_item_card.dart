@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -90,6 +91,20 @@ class FoodItemCard extends StatelessWidget {
 
   Widget _buildImage(String imagePath) {
     try {
+      if (imagePath.startsWith('image_base64:')) {
+        final base64String = imagePath.substring(
+          'image_base64:'.length,
+        );
+
+        final bytes = base64Decode(base64String);
+
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildEmojiFallback(),
+        );
+      }
+
       if (kIsWeb) {
         return Image.network(
           imagePath,

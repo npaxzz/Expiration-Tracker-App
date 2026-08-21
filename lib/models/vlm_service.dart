@@ -132,7 +132,6 @@ Instructions:
 
     final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
 
-    print('### Gemini raw text:\n$text');
     if (!text.trim().endsWith('}')) {
       throw Exception('Incomplete JSON response');
     }
