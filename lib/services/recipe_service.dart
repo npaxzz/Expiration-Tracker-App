@@ -72,6 +72,30 @@ class RecipeService {
       'https://generativelanguage.googleapis.com/v1beta/models';
 
   // ============================================================
+  // SETTINGS (alert_days_before)
+  // ============================================================
+
+  static const String _settingsBoxName = 'app_settings';
+
+  static const String _alertDaysBeforeKey = 'alert_days_before';
+
+  /// อ่าน threshold "แจ้งเตือนล่วงหน้ากี่วัน" จาก Settings
+  /// (Hive box เดียวกับที่ FoodProvider / NotificationService ใช้)
+  ///
+  /// ใช้เป็นค่า default เมื่อผู้เรียก getRecommendations() ไม่ได้ส่ง
+  /// alertDaysBefore มาเอง (เช่นถ้าไม่มี BuildContext ตอนเรียก)
+  static int get _defaultAlertDaysBefore {
+    if (!Hive.isBoxOpen(_settingsBoxName)) return 3;
+
+    final box = Hive.box(_settingsBoxName);
+
+    return box.get(
+      _alertDaysBeforeKey,
+      defaultValue: 3,
+    ) as int;
+  }
+
+  // ============================================================
   // HIVE CACHE
   // ============================================================
 
@@ -188,14 +212,21 @@ class RecipeService {
   ///
   /// [preference] เป็น optional — ถ้าผู้ใช้เลือกความต้องการจาก popup
   /// (รสชาติ / สไตล์อาหาร / ประเภทเมนู) จะถูกแทรกเข้าไปในพรอมต์ที่ส่งให้ Gemini
+  ///
+  /// [alertDaysBefore] เป็น optional — threshold "กำลังจะหมดอายุ" ตามที่
+  /// ผู้ใช้ตั้งไว้ใน Settings ควรส่งมาจาก context.read<FoodProvider>().alertDaysBefore
+  /// ถ้าไม่ส่งมา จะ fallback ไปอ่านค่าจาก Hive settings box ตรงๆ แทน
   static Future<List<RecipeRecommendation>> getRecommendations(
     List<FoodItem> items, {
     int count = 3,
     RecipePreference? preference,
+    int? alertDaysBefore,
   }) async {
     if (items.isEmpty) {
       return [];
     }
+
+    final effectiveAlertDaysBefore = alertDaysBefore ?? _defaultAlertDaysBefore;
 
     // ----------------------------------------------------------
     // ตัดของที่หมดอายุไปแล้วออกก่อนเลย ไม่ส่งเข้า Gemini
@@ -209,7 +240,9 @@ class RecipeService {
 
     final expiring = validItems
         .where(
-          (item) => item.isExpiringSoon || item.isExpiringThisWeek,
+          (item) =>
+              item.isExpiringSoon(effectiveAlertDaysBefore) ||
+              item.isExpiringThisWeek,
         )
         .toList()
       ..sort(
@@ -220,7 +253,9 @@ class RecipeService {
 
     final others = validItems
         .where(
-          (item) => !item.isExpiringSoon && !item.isExpiringThisWeek,
+          (item) =>
+              !item.isExpiringSoon(effectiveAlertDaysBefore) &&
+              !item.isExpiringThisWeek,
         )
         .toList();
 

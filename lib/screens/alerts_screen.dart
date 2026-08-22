@@ -41,6 +41,8 @@ class AlertsScreen extends StatelessWidget {
 
           final soon = provider.expiringSoonItems;
 
+          final alertDaysBefore = provider.alertDaysBefore;
+
           if (expired.isEmpty && soon.isEmpty) {
             return _buildAllGoodState();
           }
@@ -63,6 +65,7 @@ class AlertsScreen extends StatelessWidget {
                   (item) => _buildAlertCard(
                     context,
                     item,
+                    alertDaysBefore,
                   ),
                 ),
                 const SizedBox(
@@ -82,6 +85,7 @@ class AlertsScreen extends StatelessWidget {
                   (item) => _buildAlertCard(
                     context,
                     item,
+                    alertDaysBefore,
                   ),
                 ),
               ],
@@ -147,10 +151,11 @@ class AlertsScreen extends StatelessWidget {
   Widget _buildAlertCard(
     BuildContext context,
     FoodItem item,
+    int alertDaysBefore,
   ) {
     final days = item.daysUntilExpiration;
 
-    final color = item.status.color;
+    final color = item.statusFor(alertDaysBefore).color;
 
     return GestureDetector(
       onTap: () {

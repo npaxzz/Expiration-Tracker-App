@@ -137,8 +137,8 @@ class _ScanScreenState extends State<ScanScreen> {
       final secondary = _secondaryImage;
 
       result = await VlmService.analyze(
-        labelImagePath: primary,
-        productImagePath: secondary ?? primary,
+        labelImagePath: secondary ?? primary,
+        productImagePath: primary,
       );
       if (!mounted) return;
       setState(() => _isAnalyzing = false);
@@ -147,7 +147,7 @@ class _ScanScreenState extends State<ScanScreen> {
           MaterialPageRoute(
             builder: (_) => ReviewScreen(
               scanResult: result,
-              productImagePath: secondary ?? primary,
+              productImagePath: primary,
             ),
           ));
     } catch (e) {
@@ -439,8 +439,8 @@ class _ScanScreenState extends State<ScanScreen> {
           const SizedBox(height: 10),
           Text(
             _image2 != null
-                ? '✨ Processing 2 photos with AI'
-                : '✨ Processing photo with AI',
+                ? 'Processing 2 photos with AI'
+                : 'Processing photo with AI',
             style: GoogleFonts.sarabun(
                 fontSize: 14, color: AppTheme.textSecondary),
           ),

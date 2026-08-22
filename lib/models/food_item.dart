@@ -153,18 +153,25 @@ class FoodItem extends HiveObject {
 
   bool get isExpired => daysUntilExpiration < 0;
 
-  bool get isExpiringSoon =>
-      daysUntilExpiration >= 0 && daysUntilExpiration <= 3;
+  /// ของที่ "กำลังจะหมดอายุ" ตาม threshold ที่ผู้ใช้ตั้งไว้ใน Settings
+  ///
+  /// [alertDaysBefore] มาจาก FoodProvider.alertDaysBefore
+  /// ซึ่งอ่านค่าจาก Hive box 'app_settings' คีย์ 'alert_days_before'
+  bool isExpiringSoon(int alertDaysBefore) =>
+      daysUntilExpiration >= 0 && daysUntilExpiration <= alertDaysBefore;
 
   bool get isExpiringThisWeek =>
       daysUntilExpiration >= 0 && daysUntilExpiration <= 7;
 
-  ExpirationStatus get status {
+  /// สถานะของ item โดยอิงจาก threshold ที่ผู้ใช้ตั้งไว้ใน Settings
+  ///
+  /// [alertDaysBefore] มาจาก FoodProvider.alertDaysBefore
+  ExpirationStatus statusFor(int alertDaysBefore) {
     if (isExpired) {
       return ExpirationStatus.expired;
     }
 
-    if (isExpiringSoon) {
+    if (isExpiringSoon(alertDaysBefore)) {
       return ExpirationStatus.soon;
     }
 

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -14,7 +17,11 @@ class ItemDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = item.status.color;
+    // ดึง threshold จาก FoodProvider (มาจาก Settings) แทนค่า hardcode
+    // ใช้ watch เพื่อให้ badge สีอัปเดตทันทีถ้าผู้ใช้ไปเปลี่ยนค่าใน Settings
+    final alertDaysBefore = context.watch<FoodProvider>().alertDaysBefore;
+
+    final statusColor = item.statusFor(alertDaysBefore).color;
     final days = item.daysUntilExpiration;
 
     return Scaffold(
@@ -73,37 +80,7 @@ class ItemDetailScreen extends StatelessWidget {
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      item.category.color,
-                      item.category.color.withValues(alpha: 0.7),
-                    ],
-                  ),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 40),
-                      Text(
-                        item.category.emoji,
-                        style: const TextStyle(fontSize: 64),
-                      ),
-                      Text(
-                        item.category.displayName,
-                        style: GoogleFonts.sarabun(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              background: _buildHeaderBackground(),
             ),
           ),
           SliverToBoxAdapter(
@@ -138,7 +115,7 @@ class ItemDetailScreen extends StatelessWidget {
                           ),
                         ),
                         child: Text(
-                          item.status.label,
+                          item.statusFor(alertDaysBefore).label,
                           style: GoogleFonts.sarabun(
                             color: statusColor,
                             fontWeight: FontWeight.w700,
@@ -149,7 +126,7 @@ class ItemDetailScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  _buildExpirationBanner(days, statusColor),
+                  _buildExpirationBanner(days, statusColor, alertDaysBefore),
                   const SizedBox(height: 20),
                   _buildInfoGrid(),
                   if (item.notes != null) ...[
@@ -168,7 +145,151 @@ class ItemDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildExpirationBanner(int days, Color color) {
+  // ============================================================
+  // HEADER BACKGROUND (รูปจริง ถ้ามี, ไม่งั้น fallback เป็น emoji)
+  // ============================================================
+
+  Widget _buildHeaderBackground() {
+    final path = item.imagePath;
+
+    if (path == null || path.isEmpty) {
+      return _buildEmojiHeader();
+    }
+
+    // ----------------------------------------------------------
+    // BASE64
+    // ----------------------------------------------------------
+    if (path.startsWith('image_base64:')) {
+      try {
+        final base64String = path.substring('image_base64:'.length);
+        final bytes = base64Decode(base64String);
+
+        return _buildImageContainer(
+          Image.memory(
+            bytes,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => _buildEmojiHeader(),
+          ),
+        );
+      } catch (_) {
+        return _buildEmojiHeader();
+      }
+    }
+
+    // ----------------------------------------------------------
+    // URL
+    // ----------------------------------------------------------
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return _buildImageContainer(
+        Image.network(
+          path,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _buildEmojiHeader(),
+        ),
+      );
+    }
+
+    // ----------------------------------------------------------
+    // LOCAL FILE
+    // ----------------------------------------------------------
+    if (!kIsWeb) {
+      return _buildImageContainer(
+        Image.file(
+          File(path),
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _buildEmojiHeader(),
+        ),
+      );
+    }
+
+    return _buildEmojiHeader();
+  }
+
+  /// วางรูปแบบ "contain" (เห็นเต็มรูป ไม่ครอป) บนพื้นหลังไล่สีของ category
+  /// เดิม เพื่อไม่ให้มีช่องว่างโปร่งใส/ขาวโล่งๆ รอบรูป แล้วเติม scrim
+  /// บางๆ ด้านบน-ล่าง ให้ปุ่ม back/edit สีขาวยังอ่านง่าย
+  Widget _buildImageContainer(Widget image) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // พื้นหลังไล่สีเดิมของ category กันพื้นที่ว่างรอบรูป
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                item.category.color,
+                item.category.color.withValues(alpha: 0.7),
+              ],
+            ),
+          ),
+        ),
+        // รูปเต็ม ไม่ครอป
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: image,
+        ),
+        _buildHeaderScrim(),
+      ],
+    );
+  }
+
+  /// ไล่สีเข้มบางๆ เฉพาะขอบบน-ล่าง เพื่อให้ปุ่ม back/edit สีขาว
+  /// ที่มุมบนยังอ่านง่าย โดยไม่บังรูปตรงกลางมากเกินไป
+  Widget _buildHeaderScrim() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.35),
+            Colors.transparent,
+            Colors.transparent,
+            Colors.black.withValues(alpha: 0.2),
+          ],
+          stops: const [0.0, 0.2, 0.8, 1.0],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmojiHeader() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            item.category.color,
+            item.category.color.withValues(alpha: 0.7),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 40),
+            Text(
+              item.category.emoji,
+              style: const TextStyle(fontSize: 64),
+            ),
+            Text(
+              item.category.displayName,
+              style: GoogleFonts.sarabun(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpirationBanner(int days, Color color, int alertDaysBefore) {
     String message;
     if (days < 0) {
       message = 'Expired ${days.abs()} days ago';
@@ -190,7 +311,7 @@ class ItemDetailScreen extends StatelessWidget {
           Icon(
             days < 0
                 ? Icons.warning_rounded
-                : days <= 3
+                : days <= alertDaysBefore
                     ? Icons.timer_rounded
                     : Icons.check_circle_rounded,
             color: color,

@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../models/food_item.dart';
+import '../models/food_provider.dart';
 import '../theme/app_theme.dart';
 
 class FoodItemCard extends StatelessWidget {
@@ -23,8 +25,12 @@ class FoodItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ดึง threshold จาก FoodProvider (มาจาก Settings) แทนค่า hardcode
+    // ใช้ watch เพื่อให้สี/badge ของการ์ดอัปเดตทันทีถ้าผู้ใช้ไปเปลี่ยนค่าใน Settings
+    final alertDaysBefore = context.watch<FoodProvider>().alertDaysBefore;
+
     final days = item.daysUntilExpiration;
-    final statusColor = item.status.color;
+    final statusColor = item.statusFor(alertDaysBefore).color;
 
     return GestureDetector(
       onTap: onTap,
@@ -33,7 +39,7 @@ class FoodItemCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: item.isExpired || item.isExpiringSoon
+            color: item.isExpired || item.isExpiringSoon(alertDaysBefore)
                 ? statusColor.withValues(alpha: 0.3)
                 : AppTheme.divider,
           ),
@@ -55,12 +61,12 @@ class FoodItemCard extends StatelessWidget {
                 children: [
                   _buildCategoryIcon(),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildItemInfo(days)),
+                  Expanded(child: _buildItemInfo(days, alertDaysBefore)),
                   _buildActions(context, statusColor),
                 ],
               ),
             ),
-            _buildExpiryBar(days),
+            _buildExpiryBar(days, alertDaysBefore),
           ],
         ),
       ),
@@ -132,7 +138,7 @@ class FoodItemCard extends StatelessWidget {
     );
   }
 
-  Widget _buildItemInfo(int days) {
+  Widget _buildItemInfo(int days, int alertDaysBefore) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -170,13 +176,13 @@ class FoodItemCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 5),
-        _buildDaysChip(days),
+        _buildDaysChip(days, alertDaysBefore),
       ],
     );
   }
 
-  Widget _buildDaysChip(int days) {
-    final color = item.status.color;
+  Widget _buildDaysChip(int days, int alertDaysBefore) {
+    final color = item.statusFor(alertDaysBefore).color;
     String text;
     if (days < 0) {
       text = 'Expired ${days.abs()}d ago';
@@ -229,8 +235,8 @@ class FoodItemCard extends StatelessWidget {
     );
   }
 
-  Widget _buildExpiryBar(int days) {
-    final color = item.status.color;
+  Widget _buildExpiryBar(int days, int alertDaysBefore) {
+    final color = item.statusFor(alertDaysBefore).color;
     double progress;
     if (item.isExpired) {
       progress = 0.0;

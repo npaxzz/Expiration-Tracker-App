@@ -7,6 +7,7 @@ import 'notification_service.dart';
 
 class FoodProvider extends ChangeNotifier {
   static const String _boxName = 'food_items';
+  static const String _settingsBoxName = 'app_settings';
 
   // Box จะถูกเปิดก่อน runApp()
   late Box<FoodItem> _box;
@@ -43,9 +44,38 @@ class FoodProvider extends ChangeNotifier {
       _box = await Hive.openBox<FoodItem>(_boxName);
     }
 
+    // เปิด settings box ด้วย เพื่อให้อ่านค่า alert_days_before ได้
+    // (เผื่อผู้ใช้ยังไม่เคยเข้าหน้า Settings มาก่อน)
+    if (!Hive.isBoxOpen(_settingsBoxName)) {
+      await Hive.openBox(_settingsBoxName);
+    }
+
     // เช็ควันหมดอายุทุกครั้งที่เปิดแอป
     await NotificationService.checkAndNotify(items);
 
+    notifyListeners();
+  }
+
+  // ============================================================
+  // SETTINGS
+  // ============================================================
+
+  /// จำนวนวันล่วงหน้าที่ผู้ใช้ตั้งค่าไว้ใน Settings
+  /// (default = 3 ถ้ายังไม่เคยตั้งค่า หรือ box ยังไม่เปิด)
+  int get alertDaysBefore {
+    if (!Hive.isBoxOpen(_settingsBoxName)) return 3;
+
+    final box = Hive.box(_settingsBoxName);
+
+    return box.get(
+      'alert_days_before',
+      defaultValue: 3,
+    ) as int;
+  }
+
+  /// เรียกจาก SettingsScreen เมื่อผู้ใช้เปลี่ยนค่า alert_days_before
+  /// เพื่อให้หน้า Alerts (และหน้าอื่นที่ฟัง FoodProvider) rebuild ทันที
+  void refreshAlertSettings() {
     notifyListeners();
   }
 
@@ -57,8 +87,10 @@ class FoodProvider extends ChangeNotifier {
 
   int get totalItems => _box.length;
 
-  int get expiringSoonCount =>
-      items.where((item) => item.isExpiringSoon || item.isExpired).length;
+  int get expiringSoonCount => items.where((item) {
+        final days = item.daysUntilExpiration;
+        return days >= 0 && days <= alertDaysBefore;
+      }).length;
 
   List<FoodItem> getByCategory(FoodCategory category) {
     final result = items.where((item) => item.category == category).toList();
@@ -80,8 +112,14 @@ class FoodProvider extends ChangeNotifier {
     return result;
   }
 
+  /// ของที่ "กำลังจะหมดอายุ" ตาม threshold ที่ผู้ใช้ตั้งไว้ใน Settings
   List<FoodItem> get expiringSoonItems {
-    final result = items.where((item) => item.isExpiringSoon).toList();
+    final threshold = alertDaysBefore;
+
+    final result = items.where((item) {
+      final days = item.daysUntilExpiration;
+      return days >= 0 && days <= threshold;
+    }).toList();
 
     result.sort(
       (a, b) => a.expirationDate.compareTo(b.expirationDate),
@@ -124,10 +162,10 @@ class FoodProvider extends ChangeNotifier {
 
     await _box.put(item.id, item);
 
-    // Schedule notification สำหรับ item ใหม่
+    // Schedule notification สำหรับ item ใหม่ ตาม threshold ที่ผู้ใช้ตั้งไว้
     await NotificationService.scheduleExpiryAlert(
       item: item,
-      daysBefore: 3,
+      daysBefore: alertDaysBefore,
     );
 
     notifyListeners();
@@ -143,10 +181,10 @@ class FoodProvider extends ChangeNotifier {
     // ยกเลิก notification เดิม
     await NotificationService.cancelForItem(updated.id);
 
-    // สร้าง notification ใหม่
+    // สร้าง notification ใหม่ ตาม threshold ที่ผู้ใช้ตั้งไว้
     await NotificationService.scheduleExpiryAlert(
       item: updated,
-      daysBefore: 3,
+      daysBefore: alertDaysBefore,
     );
 
     notifyListeners();
@@ -170,11 +208,11 @@ class FoodProvider extends ChangeNotifier {
   // ============================================================
 
   Future<void> checkExpiryAndNotify({
-    int alertDaysBefore = 3,
+    int? alertDaysBefore,
   }) async {
     await NotificationService.checkAndNotify(
       items,
-      alertDaysBefore: alertDaysBefore,
+      alertDaysBefore: alertDaysBefore ?? this.alertDaysBefore,
     );
   }
 }
