@@ -7,6 +7,8 @@ import '../models/recipe_preference.dart';
 import '../services/recipe_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/recipe_preference_popup.dart';
+import '../localization/app_text.dart';
+import '../localization/app_language.dart';
 
 class RecipeScreen extends StatefulWidget {
   const RecipeScreen({super.key});
@@ -200,6 +202,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AppLanguage>();
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
@@ -232,7 +235,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
           },
         ),
         title: Text(
-          'Recipe Ideas',
+          AppText.recipeIdeas,
           style: GoogleFonts.sarabun(
             fontSize: 22,
             fontWeight: FontWeight.w700,
@@ -305,7 +308,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Finding new recipes...',
+            AppText.findingNewRecipes,
             style: GoogleFonts.sarabun(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -314,7 +317,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Prioritizing expiring ingredients',
+            AppText.prioritizingExpiringIngredients,
             style: GoogleFonts.sarabun(
               fontSize: 14,
               color: AppTheme.textSecondary,
@@ -348,7 +351,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Could not get recipes',
+              AppText.couldNotGetRecipes,
               style: GoogleFonts.sarabun(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -370,7 +373,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
                 Icons.refresh_rounded,
               ),
               label: Text(
-                'Try Again',
+                AppText.tryAgain,
                 style: GoogleFonts.sarabun(),
               ),
               style: ElevatedButton.styleFrom(
@@ -411,7 +414,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Ready to cook?',
+              AppText.readyToCook,
               style: GoogleFonts.sarabun(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -419,7 +422,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Find recipe ideas based on your ingredients',
+              AppText.findRecipeIdeas,
               textAlign: TextAlign.center,
               style: GoogleFonts.sarabun(
                 fontSize: 14,
@@ -433,7 +436,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
                 Icons.restaurant_menu_rounded,
               ),
               label: Text(
-                'Find Recipes',
+                AppText.findRecipes,
                 style: GoogleFonts.sarabun(
                   fontWeight: FontWeight.w600,
                 ),
@@ -465,7 +468,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No ingredients yet',
+              AppText.noIngredientsYet,
               style: GoogleFonts.sarabun(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -473,7 +476,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Add food items to your fridge first',
+              AppText.addFoodItemsFirst,
               textAlign: TextAlign.center,
               style: GoogleFonts.sarabun(
                 fontSize: 14,
@@ -518,8 +521,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Showing saved recipe ideas. '
-                  'Tap refresh to find new ones.',
+                  AppText.showingSavedRecipeIdeas,
                   style: GoogleFonts.sarabun(
                     fontSize: 12,
                     color: AppTheme.textSecondary,
@@ -553,8 +555,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Recipes prioritize your '
-                    'expiring ingredients',
+                    AppText.recipesPrioritizeExpiringIngredients,
                     style: GoogleFonts.sarabun(
                       fontSize: 13,
                       color: AppTheme.soonColor,
@@ -663,23 +664,23 @@ class _RecipeScreenState extends State<RecipeScreen> {
                 children: [
                   if (recipe.expiringIngredientsUsed > 0)
                     _miniChip(
-                      '⏰ Uses '
-                      '${recipe.expiringIngredientsUsed} '
-                      'expiring',
+                      AppText.usesExpiring(
+                        recipe.expiringIngredientsUsed,
+                      ),
                       AppTheme.soonColor,
                     ),
                   if (recipe.needsExtraIngredients)
                     _miniChip(
-                      '🛒 Buy '
-                      '${recipe.missingIngredients.length} '
-                      'more',
+                      AppText.buyMore(
+                        recipe.missingIngredients.length,
+                      ),
                       const Color(
                         0xFF5C6BC0,
                       ),
                     )
                   else
                     _miniChip(
-                      '✅ No shopping needed',
+                      AppText.noShoppingNeeded,
                       AppTheme.freshColor,
                     ),
                 ],
@@ -690,7 +691,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
             const Divider(height: 1),
             const SizedBox(height: 12),
             _sectionTitle(
-              '✅ Ingredients you have',
+              AppText.ingredientsYouHave,
             ),
             const SizedBox(height: 6),
             Wrap(
@@ -708,7 +709,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
             if (recipe.needsExtraIngredients) ...[
               const SizedBox(height: 12),
               _sectionTitle(
-                '🛒 Need to buy',
+                AppText.needToBuy,
               ),
               const SizedBox(height: 6),
               Wrap(
@@ -728,7 +729,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
             ],
             const SizedBox(height: 12),
             _sectionTitle(
-              '📋 Instructions',
+              AppText.instructions,
             ),
             const SizedBox(height: 6),
             Text(

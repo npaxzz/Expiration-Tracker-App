@@ -14,6 +14,9 @@ import 'screens/settings_screen.dart';
 import 'screens/recipe_screen.dart';
 
 import 'theme/app_theme.dart';
+import 'localization/app_language.dart';
+import 'localization/app_text.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +26,13 @@ Future<void> main() async {
   // ============================================================
 
   await FoodProvider.initHive();
+
+  // ============================================================
+  // LANGUAGE
+  // ============================================================
+
+  final appLanguage = AppLanguage();
+  await appLanguage.init();
 
   // ============================================================
   // NOTIFICATION
@@ -38,11 +48,15 @@ Future<void> main() async {
 
   // ============================================================
   // DAILY 9 AM NOTIFICATION
-  await BackgroundService.scheduleDailyCheck();
   // ============================================================
 
-  // open app NOTIFICATION
-  //await NotificationService.scheduleDailySummary();
+  await BackgroundService.scheduleDailyCheck();
+
+  // ============================================================
+  // OPEN APP NOTIFICATION
+  // ============================================================
+
+  // await NotificationService.scheduleDailySummary();
 
   // ============================================================
   // SYSTEM UI
@@ -60,7 +74,14 @@ Future<void> main() async {
   // ============================================================
 
   runApp(
-    const MyApp(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AppLanguage>.value(
+          value: appLanguage,
+        ),
+      ],
+      child: const MyApp(),
+    ),
   );
 }
 
@@ -70,15 +91,33 @@ class MyApp extends StatelessWidget {
   });
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
+    final language = context.watch<AppLanguage>();
+
     return ChangeNotifierProvider(
       create: (_) => FoodProvider()..init(),
       child: MaterialApp(
         title: 'Smart Expiration Tracker',
         theme: AppTheme.theme,
         debugShowCheckedModeBanner: false,
+
+        // ========================================================
+        // GLOBAL LANGUAGE
+        // ========================================================
+
+        locale: language.locale,
+
+        supportedLocales: const [
+          AppLanguage.thai,
+          AppLanguage.english,
+        ],
+
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+
         home: const MainNavigation(),
       ),
     );
@@ -108,6 +147,7 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(
     BuildContext context,
   ) {
+    context.watch<AppLanguage>();
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
@@ -185,13 +225,13 @@ class _MainNavigationState extends State<MainNavigation> {
                 0,
                 Icons.home_rounded,
                 Icons.home_outlined,
-                'Home',
+                AppText.home,
               ),
               _navItem(
                 1,
                 Icons.notifications_rounded,
                 Icons.notifications_none_rounded,
-                'Alerts',
+                AppText.alerts,
               ),
               const SizedBox(
                 width: 60,
@@ -200,13 +240,13 @@ class _MainNavigationState extends State<MainNavigation> {
                 2,
                 Icons.restaurant_menu_rounded,
                 Icons.restaurant_menu_outlined,
-                'Recipes',
+                AppText.recipes,
               ),
               _navItem(
                 3,
                 Icons.settings_rounded,
                 Icons.settings_outlined,
-                'Settings',
+                AppText.settings,
               ),
             ],
           ),

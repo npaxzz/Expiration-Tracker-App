@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/food_item.dart';
 import '../theme/app_theme.dart';
+import '../localization/app_language.dart';
+import '../localization/app_text.dart';
+import 'package:provider/provider.dart';
 
 class CategoryFilter extends StatelessWidget {
   final FoodCategory? selectedCategory;
@@ -15,14 +18,23 @@ class CategoryFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AppLanguage>();
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.only(right: 20),
       child: Row(
         children: [
-          _buildChip(null, 'All', '🍽️'),
+          _buildChip(
+            null,
+            AppText.all,
+            '🍽️',
+          ),
           ...FoodCategory.values.map(
-            (cat) => _buildChip(cat, cat.displayName, cat.emoji),
+            (cat) => _buildChip(
+              cat,
+              AppText.categoryName(cat),
+              cat.emoji,
+            ),
           ),
         ],
       ),

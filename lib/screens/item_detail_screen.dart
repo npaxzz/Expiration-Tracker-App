@@ -9,6 +9,8 @@ import '../models/food_item.dart';
 import '../models/food_provider.dart';
 import '../theme/app_theme.dart';
 import 'add_item_screen.dart';
+import '../localization/app_text.dart';
+import '../localization/app_language.dart';
 
 class ItemDetailScreen extends StatelessWidget {
   final FoodItem item;
@@ -17,6 +19,7 @@ class ItemDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AppLanguage>();
     // ดึง threshold จาก FoodProvider (มาจาก Settings) แทนค่า hardcode
     // ใช้ watch เพื่อให้ badge สีอัปเดตทันทีถ้าผู้ใช้ไปเปลี่ยนค่าใน Settings
     final alertDaysBefore = context.watch<FoodProvider>().alertDaysBefore;
@@ -69,7 +72,7 @@ class ItemDetailScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      'Edit',
+                      AppText.edit,
                       style: GoogleFonts.sarabun(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -292,11 +295,11 @@ class ItemDetailScreen extends StatelessWidget {
   Widget _buildExpirationBanner(int days, Color color, int alertDaysBefore) {
     String message;
     if (days < 0) {
-      message = 'Expired ${days.abs()} days ago';
+      message = AppText.expiredDaysAgo(days.abs());
     } else if (days == 0) {
-      message = 'Expires today!';
+      message = AppText.expiresTodayBang;
     } else {
-      message = 'Expires in $days days';
+      message = AppText.expiresInDaysDetail(days);
     }
 
     return Container(
@@ -330,7 +333,10 @@ class ItemDetailScreen extends StatelessWidget {
                 ),
               ),
               Text(
-                DateFormat('d MMMM yyyy').format(item.expirationDate),
+                DateFormat(
+                  'd MMMM yyyy',
+                  AppLanguage.currentLanguageCode == 'th' ? 'th_TH' : 'en_US',
+                ).format(item.expirationDate),
                 style: GoogleFonts.sarabun(
                   fontSize: 13,
                   color: AppTheme.textSecondary,
@@ -348,7 +354,7 @@ class ItemDetailScreen extends StatelessWidget {
       children: [
         Expanded(
           child: _infoCard(
-            'Quantity',
+            AppText.quantity,
             item.quantity.toString(),
             Icons.inventory_rounded,
             AppTheme.primary,
@@ -357,8 +363,11 @@ class ItemDetailScreen extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _infoCard(
-            'Added',
-            DateFormat('d MMM').format(item.addedDate),
+            AppText.added,
+            DateFormat(
+              'd MMM',
+              AppLanguage.currentLanguageCode == 'th' ? 'th_TH' : 'en_US',
+            ).format(item.addedDate),
             Icons.add_circle_rounded,
             const Color(0xFF5C6BC0),
           ),
@@ -366,7 +375,7 @@ class ItemDetailScreen extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _infoCard(
-            'Category',
+            AppText.category,
             item.category.emoji,
             Icons.category_rounded,
             item.category.color,
@@ -430,7 +439,7 @@ class ItemDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Notes',
+                  AppText.notes,
                   style: GoogleFonts.sarabun(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -457,7 +466,7 @@ class ItemDetailScreen extends StatelessWidget {
     return OutlinedButton.icon(
       onPressed: () => _confirmDelete(context),
       icon: const Icon(Icons.delete_outline_rounded),
-      label: Text('Remove from Fridge', style: GoogleFonts.sarabun()),
+      label: Text(AppText.removeFromFridge, style: GoogleFonts.sarabun()),
       style: OutlinedButton.styleFrom(
         foregroundColor: AppTheme.expiredColor,
         side: const BorderSide(color: AppTheme.expiredColor),
@@ -474,18 +483,18 @@ class ItemDetailScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Delete Item?',
+          AppText.deleteItem,
           style: GoogleFonts.sarabun(fontWeight: FontWeight.w700),
         ),
         content: Text(
-          'Remove "${item.name}" from your fridge?',
+          AppText.removeItemMessage(item.name),
           style: GoogleFonts.sarabun(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              'Cancel',
+              AppText.cancel,
               style: GoogleFonts.sarabun(color: AppTheme.textSecondary),
             ),
           ),
@@ -502,7 +511,7 @@ class ItemDetailScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: Text('Delete', style: GoogleFonts.sarabun()),
+            child: Text(AppText.delete, style: GoogleFonts.sarabun()),
           ),
         ],
       ),

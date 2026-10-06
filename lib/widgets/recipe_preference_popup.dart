@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_theme.dart';
 import '../models/recipe_preference.dart';
+import '../localization/app_text.dart';
+import '../localization/app_language.dart';
+import 'package:provider/provider.dart';
 
 /// Opens the preference popup and resolves with the user's picks,
 /// or null if they cancelled/dismissed it.
@@ -22,27 +25,27 @@ class RecipePreferencePopup extends StatefulWidget {
 }
 
 class _RecipePreferencePopupState extends State<RecipePreferencePopup> {
-  final List<String> _tasteOptions = const [
-    'Spicy',
-    'Sweet',
-    'Salty',
-    'Sour',
-    'Well-balanced',
+  final List<String> _tasteOptions = [
+    AppText.spicy,
+    AppText.sweet,
+    AppText.salty,
+    AppText.sour,
+    AppText.wellBalanced,
   ];
 
-  final List<String> _cuisineOptions = const [
-    '🇹🇭 Thai',
-    '🇯🇵 Japanese',
-    '🇰🇷 Korean',
-    '🇨🇳 Chinese',
-    '🌎 Western',
+  final List<String> _cuisineOptions = [
+    AppText.thaiCuisine,
+    AppText.japaneseCuisine,
+    AppText.koreanCuisine,
+    AppText.chineseCuisine,
+    AppText.westernCuisine,
   ];
 
-  final List<String> _menuTypeOptions = const [
-    '🍛 Main dish',
-    '🍜 Noodles',
-    '🥘 Soup / Curry',
-    '🥗 Light meal',
+  final List<String> _menuTypeOptions = [
+    AppText.mainDish,
+    AppText.noodles,
+    AppText.soupCurry,
+    AppText.lightMeal,
   ];
 
   final Set<String> _selectedTastes = {};
@@ -122,6 +125,7 @@ class _RecipePreferencePopupState extends State<RecipePreferencePopup> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AppLanguage>();
     return Dialog(
       backgroundColor: AppTheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -135,7 +139,7 @@ class _RecipePreferencePopupState extends State<RecipePreferencePopup> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '🍳 What do you feel like eating today?',
+                '🍳  ${AppText.recipePreferenceTitle}',
                 style: GoogleFonts.sarabun(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -144,7 +148,7 @@ class _RecipePreferencePopupState extends State<RecipePreferencePopup> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Pick as many as you like in each category.',
+                AppText.pickAsManyAsYouLike,
                 style: GoogleFonts.sarabun(
                   fontSize: 12,
                   color: AppTheme.textSecondary,
@@ -157,17 +161,17 @@ class _RecipePreferencePopupState extends State<RecipePreferencePopup> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildSection(
-                        title: 'Taste you feel like',
+                        title: AppText.tasteYouFeelLike,
                         options: _tasteOptions,
                         selectedSet: _selectedTastes,
                       ),
                       _buildSection(
-                        title: 'Cuisine style',
+                        title: AppText.cuisineStyle,
                         options: _cuisineOptions,
                         selectedSet: _selectedCuisines,
                       ),
                       _buildSection(
-                        title: 'Menu type',
+                        title: AppText.menuType,
                         options: _menuTypeOptions,
                         selectedSet: _selectedMenuTypes,
                       ),
@@ -181,7 +185,7 @@ class _RecipePreferencePopupState extends State<RecipePreferencePopup> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: Text('Cancel', style: GoogleFonts.sarabun()),
+                    child: Text(AppText.cancel, style: GoogleFonts.sarabun()),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
@@ -194,7 +198,7 @@ class _RecipePreferencePopupState extends State<RecipePreferencePopup> {
                       ),
                     ),
                     child: Text(
-                      'Find Recipes',
+                      AppText.findRecipes,
                       style: GoogleFonts.sarabun(fontWeight: FontWeight.w600),
                     ),
                   ),

@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import '../models/food_item.dart';
 import '../models/food_provider.dart';
 import '../theme/app_theme.dart';
+import '../localization/app_language.dart';
+import '../localization/app_text.dart';
 
 class FoodItemCard extends StatelessWidget {
   final FoodItem item;
@@ -25,6 +27,7 @@ class FoodItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AppLanguage>();
     // ดึง threshold จาก FoodProvider (มาจาก Settings) แทนค่า hardcode
     // ใช้ watch เพื่อให้สี/badge ของการ์ดอัปเดตทันทีถ้าผู้ใช้ไปเปลี่ยนค่าใน Settings
     final alertDaysBefore = context.watch<FoodProvider>().alertDaysBefore;
@@ -156,7 +159,10 @@ class FoodItemCard extends StatelessWidget {
         Row(
           children: [
             Text(
-              DateFormat('d MMM yyyy').format(item.expirationDate),
+              DateFormat(
+                'd MMM yyyy',
+                AppLanguage.currentLanguageCode == 'th' ? 'th_TH' : 'en_US',
+              ).format(item.expirationDate),
               style: GoogleFonts.sarabun(
                 fontSize: 12,
                 color: AppTheme.textSecondary,
@@ -167,7 +173,7 @@ class FoodItemCard extends StatelessWidget {
                 style: GoogleFonts.sarabun(color: AppTheme.textSecondary)),
             const SizedBox(width: 6),
             Text(
-              'Qty: ${item.quantity}',
+              AppText.quantityShort(item.quantity),
               style: GoogleFonts.sarabun(
                 fontSize: 12,
                 color: AppTheme.textSecondary,
@@ -185,11 +191,11 @@ class FoodItemCard extends StatelessWidget {
     final color = item.statusFor(alertDaysBefore).color;
     String text;
     if (days < 0) {
-      text = 'Expired ${days.abs()}d ago';
+      text = AppText.expiredDaysAgo(days.abs());
     } else if (days == 0) {
-      text = '⚡ Expires today!';
+      text = AppText.expiresTodayBang;
     } else {
-      text = '${days}d left';
+      text = AppText.expiresInDays(days);
     }
 
     return Container(

@@ -11,6 +11,8 @@ import '../models/food_provider.dart';
 import '../models/food_item.dart';
 import '../theme/app_theme.dart';
 import 'item_detail_screen.dart';
+import '../localization/app_language.dart';
+import '../localization/app_text.dart';
 
 class AlertsScreen extends StatelessWidget {
   const AlertsScreen({
@@ -21,13 +23,14 @@ class AlertsScreen extends StatelessWidget {
   Widget build(
     BuildContext context,
   ) {
+    context.watch<AppLanguage>();
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Alerts',
+          AppText.alerts,
           style: GoogleFonts.sarabun(
             fontSize: 24,
             fontWeight: FontWeight.w700,
@@ -54,8 +57,8 @@ class AlertsScreen extends StatelessWidget {
             children: [
               if (expired.isNotEmpty) ...[
                 _buildSectionHeader(
-                  '🚨 Expired',
-                  '${expired.length} item${expired.length > 1 ? 's' : ''}',
+                  '🚨 ${AppText.expired}',
+                  AppText.itemCount(expired.length),
                   AppTheme.expiredColor,
                 ),
                 const SizedBox(
@@ -74,8 +77,8 @@ class AlertsScreen extends StatelessWidget {
               ],
               if (soon.isNotEmpty) ...[
                 _buildSectionHeader(
-                  '⚠️ Expiring Soon',
-                  '${soon.length} item${soon.length > 1 ? 's' : ''}',
+                  '⚠️ ${AppText.expiringSoon}',
+                  AppText.itemCount(soon.length),
                   AppTheme.soonColor,
                 ),
                 const SizedBox(
@@ -220,10 +223,10 @@ class AlertsScreen extends StatelessWidget {
                   ),
                   Text(
                     days < 0
-                        ? 'Expired ${days.abs()} days ago'
+                        ? AppText.expiredDaysAgo(days.abs())
                         : days == 0
-                            ? 'Expires today!'
-                            : 'Expires in $days days',
+                            ? AppText.expiresTodayBang
+                            : AppText.expiresInDaysDetail(days),
                     style: GoogleFonts.sarabun(
                       fontSize: 13,
                       color: color,
@@ -233,6 +236,9 @@ class AlertsScreen extends StatelessWidget {
                   Text(
                     DateFormat(
                       'd MMM yyyy',
+                      AppLanguage.currentLanguageCode == 'th'
+                          ? 'th_TH'
+                          : 'en_US',
                     ).format(
                       item.expirationDate,
                     ),
@@ -258,7 +264,7 @@ class AlertsScreen extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Qty: ${item.quantity}',
+                AppText.quantityShort(item.quantity),
                 style: GoogleFonts.sarabun(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -446,7 +452,7 @@ class AlertsScreen extends StatelessWidget {
             height: 20,
           ),
           Text(
-            'All Good! 🎉',
+            AppText.allGood,
             style: GoogleFonts.sarabun(
               fontSize: 24,
               fontWeight: FontWeight.w700,
@@ -457,7 +463,7 @@ class AlertsScreen extends StatelessWidget {
             height: 10,
           ),
           Text(
-            'No expiring items right now.\nYour fridge is in great shape!',
+            AppText.noExpiringItems,
             textAlign: TextAlign.center,
             style: GoogleFonts.sarabun(
               fontSize: 15,

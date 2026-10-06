@@ -13,6 +13,8 @@ import '../models/food_item.dart';
 import '../models/food_provider.dart';
 import '../theme/app_theme.dart';
 import '../models/expiry_defaults.dart';
+import '../localization/app_text.dart';
+import '../localization/app_language.dart';
 
 class ReviewScreen extends StatefulWidget {
   final ScanResult scanResult;
@@ -55,6 +57,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AppLanguage>();
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
@@ -72,7 +75,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Review Result',
+        title: Text(AppText.review,
             style: GoogleFonts.sarabun(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
@@ -146,7 +149,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   decoration: BoxDecoration(
                       color: AppTheme.soonColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8)),
-                  child: Text('Default date',
+                  child: Text(AppText.defaultDate,
                       style: GoogleFonts.sarabun(
                           fontSize: 11,
                           color: AppTheme.soonColor,
@@ -159,8 +162,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
             _chip(
               Icons.auto_awesome_rounded,
               widget.scanResult.ocrFoundDate
-                  ? 'Expiry: detected'
-                  : 'Expiry: not found → default',
+                  ? AppText.expiryDetected
+                  : AppText.expiryNotFoundDefault,
               widget.scanResult.ocrFoundDate
                   ? AppTheme.freshColor
                   : AppTheme.soonColor,
@@ -168,12 +171,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
             const SizedBox(width: 8),
             _chip(
               Icons.category_rounded,
-              'Category: detected',
+              AppText.categoryDetected,
               engineColor,
             ),
           ]),
           const SizedBox(height: 8),
-          Text('Review and edit below before saving',
+          Text(AppText.reviewAndEditBeforeSaving,
               style: GoogleFonts.sarabun(
                   fontSize: 12,
                   color: AppTheme.textSecondary,
@@ -206,7 +209,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Widget _buildNameField() {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _label('Product Name'),
+      _label(AppText.productName),
       const SizedBox(height: 8),
       TextFormField(
         controller: _nameController,
@@ -236,14 +239,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Widget _buildCategorySection() {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        _label('Category'),
+        _label(AppText.category),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
               color: AppTheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(6)),
-          child: Text('AI detected',
+          child: Text(AppText.aiDetected,
               style: GoogleFonts.sarabun(
                   fontSize: 10,
                   color: AppTheme.primary,
@@ -314,7 +317,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Widget _buildDateSection() {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        _label('Expiration Date'),
+        _label(AppText.expirationDate),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -326,8 +329,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
           ),
           child: Text(
               widget.scanResult.ocrFoundDate
-                  ? 'OCR detected'
-                  : 'Default (no label)',
+                  ? AppText.ocrDetected
+                  : AppText.defaultNoLabel,
               style: GoogleFonts.sarabun(
                   fontSize: 10,
                   color: widget.scanResult.ocrFoundDate
@@ -360,8 +363,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                        DateFormat('EEEE, d MMMM yyyy')
-                            .format(_expirationDate!),
+                        DateFormat(
+                          'EEEE, d MMMM yyyy',
+                          AppLanguage.currentLanguageCode == 'th'
+                              ? 'th_TH'
+                              : 'en_US',
+                        ).format(_expirationDate!),
                         style: GoogleFonts.sarabun(
                             fontSize: 15, fontWeight: FontWeight.w500)),
                     Text(_daysText(),
@@ -379,7 +386,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Widget _buildQuantityRow() {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _label('Quantity'),
+      _label(AppText.quantity),
       const SizedBox(height: 8),
       Row(children: [
         _qtyBtn(Icons.remove_rounded, () {
@@ -421,14 +428,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _label('Notes (optional)'),
+        _label(AppText.notesOptional),
         const SizedBox(height: 8),
         TextFormField(
           controller: _notesController,
           maxLines: 3,
           style: GoogleFonts.sarabun(fontSize: 14),
           decoration: InputDecoration(
-            hintText: 'Add any notes...',
+            hintText: AppText.addAnyNotes,
             prefixIcon: const Icon(
               Icons.notes_rounded,
               color: AppTheme.primary,
@@ -470,7 +477,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               child: CircularProgressIndicator(
                   color: Colors.white, strokeWidth: 2))
           : const Icon(Icons.check_circle_rounded, size: 20),
-      label: Text(_isSaving ? 'Saving...' : 'Confirm & Add to Fridge',
+      label: Text(_isSaving ? AppText.saving : AppText.confirmAndAddToFridge,
           style:
               GoogleFonts.sarabun(fontSize: 16, fontWeight: FontWeight.w600)),
       style: ElevatedButton.styleFrom(
@@ -493,15 +500,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   String _daysText() {
     if (_expirationDate == null) {
-      return 'Select expiration date';
+      return AppText.selectExpirationDate;
     }
 
     final days = _expirationDate!.difference(DateTime.now()).inDays;
 
-    if (days < 0) return 'Already expired!';
-    if (days == 0) return 'Expires today';
+    if (days < 0) return AppText.alreadyExpired;
+    if (days == 0) return AppText.expiresToday;
 
-    return 'Expires in $days days';
+    return AppText.expiresInDays(days);
   }
 
   Color _daysColor() {
@@ -563,7 +570,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please enter a product name',
+            AppText.pleaseEnterProductName,
             style: GoogleFonts.sarabun(),
           ),
           backgroundColor: AppTheme.soonColor,
@@ -578,7 +585,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please select a category',
+            AppText.pleaseSelectCategory,
             style: GoogleFonts.sarabun(),
           ),
           backgroundColor: AppTheme.soonColor,
@@ -593,7 +600,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please select an expiration date',
+            AppText.pleaseSelectExpirationDate,
             style: GoogleFonts.sarabun(),
           ),
           backgroundColor: AppTheme.soonColor,
@@ -608,7 +615,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please add a product image',
+            AppText.pleaseAddProductImage,
             style: GoogleFonts.sarabun(),
           ),
           backgroundColor: AppTheme.soonColor,
@@ -631,7 +638,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Could not save product image',
+                AppText.couldNotSaveProductImage,
                 style: GoogleFonts.sarabun(),
               ),
               backgroundColor: AppTheme.soonColor,
@@ -665,7 +672,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Added to fridge!',
+            AppText.addedToFridge,
             style: GoogleFonts.sarabun(
               fontWeight: FontWeight.w500,
             ),

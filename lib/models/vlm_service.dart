@@ -7,6 +7,7 @@ import 'ai_config.dart';
 import 'expiry_defaults.dart';
 import 'food_item.dart';
 import 'scan_result.dart';
+import '../localization/app_language.dart';
 
 /// Gemini Vision Service
 /// ส่ง 2 รูป (ฉลาก + สินค้า) → ได้ ชื่อสินค้า + หมวดหมู่ + วันหมดอายุ
@@ -46,10 +47,21 @@ class VlmService {
       '$_baseUrl/${AiConfig.geminiModel}:generateContent?key=${AiConfig.geminiApiKey}',
     );
 
-    const prompt = '''
+    final languageInstruction = AppLanguage.currentLanguageCode == 'th'
+        ? '''
+- Respond in Thai language.
+- product_name must be written in Thai.
+'''
+        : '''
+- Respond in English language.
+- product_name must be written in English.
+''';
+
+    final prompt = '''
 You are an AI that extracts structured data from 1 or 2 product images.
 
 Return ONLY a valid JSON object.
+
 - No explanation
 - No markdown
 - No extra text
@@ -57,19 +69,25 @@ Return ONLY a valid JSON object.
 - All strings must be properly escaped (valid JSON)
 
 JSON format:
+
 {
   "product_name": string (max 30 characters),
   "category": one of ["fruits_vegetables", "eggs_dairy", "meat_frozen", "dry_food", "canned_bottled", "bakery_snacks"],
-  "expiry_date": "YYYY-MM-DD" or null,
+  "expiry_date": "YYYY-MM-DD" or null
 }
 
 Instructions:
+
 - Use Image 1 (label) to find expiry date (EXP, BB, Best Before, หมดอายุ, etc.)
 - Use Image 2 (product photo) to identify product name and category
 - Combine both images if needed
 - If expiry date is not clearly visible, return null
 - Keep product_name concise and clean (no symbols, no line breaks)
 - Ensure the JSON is syntactically correct
+
+Language requirements:
+
+$languageInstruction
 ''';
 
     final body = jsonEncode({
@@ -179,18 +197,12 @@ Instructions:
       return jsonDecode(clean) as Map<String, dynamic>;
     } catch (e) {
       debugPrint('### JSON parse error: $e');
-
-      return {
-        "product_name": "Unknown Product",
-        "category": "dry_food",
-        "expiry_date": null,
-        "confidence": 0.0
-      };
+      rethrow;
     }
   }
 
   static ScanResult _parseResponse(Map<String, dynamic> data) {
-    final productName = (data['product_name'] as String?) ?? 'Unknown Product';
+    final productName = (data['product_name'] as String?) ?? '';
     final categoryStr = (data['category'] as String?) ?? 'dry_food';
     final expiryStr = data['expiry_date'] as String?;
     final confidence = (data['confidence'] as num?)?.toDouble() ?? 0.8;

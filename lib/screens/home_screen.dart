@@ -10,6 +10,8 @@ import '../widgets/stat_card.dart';
 import '../widgets/category_filter.dart';
 import 'add_item_screen.dart';
 import 'item_detail_screen.dart';
+import '../localization/app_text.dart';
+import '../localization/app_language.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -45,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AppLanguage>();
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
@@ -187,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         children: [
           Expanded(
             child: StatCard(
-              title: 'Total Items',
+              title: AppText.totalItems,
               value: provider.totalItems.toString(),
               icon: Icons.inventory_2_rounded,
               color: AppTheme.primary,
@@ -197,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const SizedBox(width: 14),
           Expanded(
             child: StatCard(
-              title: 'Expiring Soon',
+              title: AppText.expiringSoon,
               value: provider.expiringSoonCount.toString(),
               icon: Icons.warning_amber_rounded,
               color: provider.expiringSoonCount > 0
@@ -268,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 16),
           Text(
-            'No items here',
+            AppText.noItemsHere,
             style: GoogleFonts.sarabun(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -277,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap + to add your first item',
+            AppText.tapToAddFirstItem,
             style: GoogleFonts.sarabun(
               fontSize: 14,
               color: AppTheme.textSecondary,
@@ -312,18 +315,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Delete Item?',
+          AppText.deleteItemQuestion,
           style: GoogleFonts.sarabun(fontWeight: FontWeight.w700),
         ),
         content: Text(
-          'Remove "${item.name}" from your fridge?',
+          AppText.removeItemMessage(item.name),
           style: GoogleFonts.sarabun(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              'Cancel',
+              AppText.cancel,
               style: GoogleFonts.sarabun(color: AppTheme.textSecondary),
             ),
           ),
@@ -349,7 +352,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: Text('Delete', style: GoogleFonts.sarabun()),
+            child: Text(AppText.delete, style: GoogleFonts.sarabun()),
           ),
         ],
       ),

@@ -9,6 +9,9 @@ import '../models/vlm_service.dart';
 import '../theme/app_theme.dart';
 import 'review_screen.dart';
 import 'add_item_screen.dart';
+import '../localization/app_text.dart';
+import '../localization/app_language.dart';
+import 'package:provider/provider.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -46,7 +49,7 @@ class _ScanScreenState extends State<ScanScreen> {
       });
     } catch (e) {
       debugPrint('### pickImage error: $e');
-      _showSnack('Could not open camera/gallery');
+      _showSnack(AppText.couldNotOpenCameraGallery);
     }
   }
 
@@ -68,24 +71,23 @@ class _ScanScreenState extends State<ScanScreen> {
                     color: AppTheme.divider,
                     borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 20),
-            Text(slot == 1 ? 'Photo 1' : 'Photo 2',
+            Text(slot == 1 ? AppText.photo1 : AppText.photo2,
                 style: GoogleFonts.sarabun(
                     fontSize: 20, fontWeight: FontWeight.w700)),
             const SizedBox(height: 20),
             Row(children: [
               if (!kIsWeb) ...[
                 Expanded(
-                    child: _sourceBtn(
-                        Icons.camera_alt_rounded, 'Camera', AppTheme.primary,
-                        () {
+                    child: _sourceBtn(Icons.camera_alt_rounded, AppText.camera,
+                        AppTheme.primary, () {
                   Navigator.pop(ctx);
                   _pickImage(slot: slot, source: ImageSource.camera);
                 })),
                 const SizedBox(width: 12),
               ],
               Expanded(
-                  child: _sourceBtn(Icons.photo_library_rounded, 'Gallery',
-                      const Color(0xFF1565C0), () {
+                  child: _sourceBtn(Icons.photo_library_rounded,
+                      AppText.gallery, const Color(0xFF1565C0), () {
                 Navigator.pop(ctx);
                 _pickImage(slot: slot, source: ImageSource.gallery);
               })),
@@ -191,6 +193,7 @@ class _ScanScreenState extends State<ScanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AppLanguage>();
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
@@ -208,7 +211,7 @@ class _ScanScreenState extends State<ScanScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Scan Product',
+        title: Text(AppText.scanProduct,
             style: GoogleFonts.sarabun(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
@@ -236,7 +239,7 @@ class _ScanScreenState extends State<ScanScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Add 1 photo minimum — AI detects name, category & expiry date   — If No expiry label, will estimate based on category\nAdd a 2nd photo if label and product are in separate images',
+                AppText.scanInfo,
                 style: GoogleFonts.sarabun(
                     fontSize: 13, color: AppTheme.primary, height: 1.5),
               ),
@@ -248,9 +251,8 @@ class _ScanScreenState extends State<ScanScreen> {
         // Photo 1 — optional
         _buildSlot(
           slot: 1,
-          title: 'Product',
-          subtitle:
-              'Add an image showing the overall appearance of the product',
+          title: AppText.product,
+          subtitle: AppText.productImageDescription,
           color: const Color(0xFF1565C0),
           lightColor: const Color(0xFFE3F2FD),
           image: _image1,
@@ -261,8 +263,8 @@ class _ScanScreenState extends State<ScanScreen> {
         // Photo 2 — optional
         _buildSlot(
           slot: 2,
-          title: 'Expiry Date',
-          subtitle: 'Add images with an expiration date',
+          title: AppText.expiryDate,
+          subtitle: AppText.expiryImageDescription,
           color: const Color(0xFF6A1B9A),
           lightColor: const Color(0xFFF3E5F5),
           image: _image2,
@@ -277,7 +279,7 @@ class _ScanScreenState extends State<ScanScreen> {
           child: ElevatedButton.icon(
             onPressed: _canAnalyze ? _analyze : null,
             icon: const Icon(Icons.auto_awesome_rounded, size: 20),
-            label: Text('Analyze with AI',
+            label: Text(AppText.analyzeWithAi,
                 style: GoogleFonts.sarabun(
                     fontSize: 16, fontWeight: FontWeight.w600)),
             style: ElevatedButton.styleFrom(
@@ -301,7 +303,7 @@ class _ScanScreenState extends State<ScanScreen> {
               ),
             );
           },
-          child: Text('Enter manually instead',
+          child: Text(AppText.enterManuallyInstead,
               style: GoogleFonts.sarabun(
                   color: AppTheme.textSecondary, fontSize: 13)),
         ),
@@ -377,7 +379,7 @@ class _ScanScreenState extends State<ScanScreen> {
                       ),
                     ),
                     child: Row(children: [
-                      Text('Photo $slot',
+                      Text(slot == 1 ? AppText.photo1 : AppText.photo2,
                           style: GoogleFonts.sarabun(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -389,7 +391,7 @@ class _ScanScreenState extends State<ScanScreen> {
                         decoration: BoxDecoration(
                             color: color,
                             borderRadius: BorderRadius.circular(20)),
-                        child: Text('Change',
+                        child: Text(AppText.change,
                             style: GoogleFonts.sarabun(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -433,7 +435,7 @@ class _ScanScreenState extends State<ScanScreen> {
                               decoration: BoxDecoration(
                                   color: AppTheme.divider,
                                   borderRadius: BorderRadius.circular(6)),
-                              child: Text('Optional',
+                              child: Text(AppText.change,
                                   style: GoogleFonts.sarabun(
                                       fontSize: 10,
                                       color: AppTheme.textSecondary)),
@@ -464,7 +466,7 @@ class _ScanScreenState extends State<ScanScreen> {
                 color: AppTheme.primary, size: 44),
           ),
           const SizedBox(height: 24),
-          Text('Analyzing...',
+          Text(AppText.analyzing,
               style: GoogleFonts.sarabun(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
@@ -472,8 +474,8 @@ class _ScanScreenState extends State<ScanScreen> {
           const SizedBox(height: 10),
           Text(
             _image2 != null
-                ? 'Processing 2 photos with AI'
-                : 'Processing photo with AI',
+                ? AppText.processingPhotosWithAi(2)
+                : AppText.processingPhotoWithAi,
             style: GoogleFonts.sarabun(
                 fontSize: 14, color: AppTheme.textSecondary),
           ),

@@ -12,6 +12,8 @@ import '../models/food_provider.dart';
 import '../models/food_item.dart';
 import '../theme/app_theme.dart';
 import '../models/expiry_defaults.dart';
+import '../localization/app_text.dart';
+import '../localization/app_language.dart';
 
 class AddItemScreen extends StatefulWidget {
   final FoodItem? existingItem;
@@ -106,7 +108,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       });
     } catch (e) {
       _showSnack(
-        'Could not open camera/gallery: $e',
+        AppText.couldNotOpenCameraGalleryWithError(e),
       );
     }
   }
@@ -135,7 +137,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Add Photo',
+                AppText.addPhoto,
                 style: GoogleFonts.sarabun(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
@@ -148,7 +150,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     Expanded(
                       child: _sourceButton(
                         icon: Icons.camera_alt_rounded,
-                        label: 'Camera',
+                        label: AppText.camera,
                         color: AppTheme.primary,
                         onTap: () {
                           Navigator.pop(
@@ -168,7 +170,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   Expanded(
                     child: _sourceButton(
                       icon: Icons.photo_library_rounded,
-                      label: 'Gallery',
+                      label: AppText.gallery,
                       color: const Color(
                         0xFF1565C0,
                       ),
@@ -205,7 +207,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     size: 18,
                   ),
                   label: Text(
-                    'Remove Photo',
+                    AppText.removePhoto,
                     style: GoogleFonts.sarabun(
                       color: AppTheme.expiredColor,
                     ),
@@ -319,6 +321,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AppLanguage>();
+
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
@@ -343,7 +347,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          _isEditing ? 'Edit Item' : 'Add New Item',
+          _isEditing ? AppText.editItem : AppText.addNewItem,
           style: GoogleFonts.sarabun(
             fontSize: 22,
             fontWeight: FontWeight.w700,
@@ -457,7 +461,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                             width: 6,
                           ),
                           Text(
-                            'Photo added',
+                            AppText.photoAdded,
                             style: GoogleFonts.sarabun(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -477,7 +481,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                               ),
                             ),
                             child: Text(
-                              'Change',
+                              AppText.change,
                               style: GoogleFonts.sarabun(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -592,7 +596,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
         ),
         const SizedBox(height: 10),
         Text(
-          'Add Photo',
+          AppText.addPhoto,
           style: GoogleFonts.sarabun(
             color: AppTheme.primary,
             fontWeight: FontWeight.w600,
@@ -602,8 +606,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
         const SizedBox(height: 4),
         Text(
           kIsWeb
-              ? 'Choose from gallery'
-              : 'Take a photo or choose from gallery',
+              ? AppText.chooseFromGallery
+              : AppText.takePhotoOrChooseFromGallery,
           textAlign: TextAlign.center,
           style: GoogleFonts.sarabun(
             color: AppTheme.textSecondary,
@@ -623,7 +627,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _fieldLabel(
-          'Item Name *',
+          AppText.itemName,
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -632,12 +636,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
             fontSize: 15,
           ),
           decoration: _inputDecoration(
-            'e.g. Organic Milk',
+            AppText.itemNameHint,
             Icons.label_rounded,
           ),
           validator: (v) {
             if (v?.trim().isEmpty == true) {
-              return 'Please enter a name';
+              return AppText.pleaseEnterName;
             }
 
             return null;
@@ -656,7 +660,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _fieldLabel(
-          'Category',
+          AppText.category,
         ),
         const SizedBox(height: 10),
         GridView.count(
@@ -721,7 +725,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                       ),
                       Expanded(
                         child: Text(
-                          cat.displayName,
+                          AppText.categoryName(cat),
                           style: GoogleFonts.sarabun(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
@@ -753,7 +757,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _fieldLabel(
-          'Expiration Date *',
+          AppText.expirationDateRequired,
         ),
         const SizedBox(height: 8),
         GestureDetector(
@@ -793,9 +797,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     children: [
                       Text(
                         _expirationDate == null
-                            ? 'Select category first'
+                            ? AppText.selectCategoryFirst
                             : DateFormat(
                                 'EEEE, d MMMM yyyy',
+                                AppLanguage.currentLanguageCode == 'th'
+                                    ? 'th_TH'
+                                    : 'en_US',
                               ).format(_expirationDate!),
                         style: GoogleFonts.sarabun(
                           fontSize: 15,
@@ -830,7 +837,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   String _getDaysText() {
     if (_expirationDate == null) {
-      return 'Select expiration date';
+      return AppText.selectExpirationDate;
     }
 
     final days = _expirationDate!
@@ -840,14 +847,14 @@ class _AddItemScreenState extends State<AddItemScreen> {
         .inDays;
 
     if (days < 0) {
-      return 'Already expired!';
+      return AppText.alreadyExpired;
     }
 
     if (days == 0) {
-      return 'Expires today';
+      return AppText.expiresToday;
     }
 
-    return 'Expires in $days days';
+    return AppText.expiresInDays(days);
   }
 
   Color _getDaysColor() {
@@ -885,7 +892,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _fieldLabel(
-          'Quantity',
+          AppText.quantity,
         ),
         const SizedBox(height: 8),
         Row(
@@ -970,7 +977,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _fieldLabel(
-          'Notes (optional)',
+          AppText.notesOptional,
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -980,7 +987,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
             fontSize: 14,
           ),
           decoration: _inputDecoration(
-            'Add any notes...',
+            AppText.addAnyNotes,
             Icons.notes_rounded,
           ),
         ),
@@ -1016,7 +1023,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
               ),
             )
           : Text(
-              _isEditing ? 'Save Changes' : 'Add to Fridge',
+              _isEditing ? AppText.saveChanges : AppText.addToFridge,
               style: GoogleFonts.sarabun(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -1139,7 +1146,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     final name = _nameController.text.trim();
 
     if (name.isEmpty) {
-      _showSnack('Please enter a product name');
+      _showSnack(AppText.pleaseEnterProductName);
       return;
     }
 
@@ -1147,7 +1154,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     // REQUIRED: CATEGORY
     // =========================
     if (_selectedCategory == null) {
-      _showSnack('Please select a category');
+      _showSnack(AppText.pleaseSelectCategory);
       return;
     }
 
@@ -1155,7 +1162,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     // REQUIRED: EXPIRATION DATE
     // =========================
     if (_expirationDate == null) {
-      _showSnack('Please select an expiration date');
+      _showSnack(AppText.pleaseSelectExpirationDate);
       return;
     }
 
@@ -1169,7 +1176,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     final hasNewImage = _pickedImage != null;
 
     if (!hasNewImage && !hasExistingImage) {
-      _showSnack('Please add a product image');
+      _showSnack(AppText.pleaseAddProductImage);
       return;
     }
 
@@ -1185,7 +1192,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       // ตรวจอีกครั้งว่ารูปสามารถบันทึกได้จริง
       if (imagePath == null || imagePath.isEmpty) {
         if (mounted) {
-          _showSnack('Could not save product image');
+          _showSnack(AppText.couldNotSaveProductImage);
         }
         return;
       }
@@ -1224,7 +1231,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     } catch (e) {
       if (mounted) {
         _showSnack(
-          'Could not save item: $e',
+          AppText.couldNotSaveItemWithError(e),
         );
       }
     } finally {

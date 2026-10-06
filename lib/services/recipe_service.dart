@@ -7,6 +7,7 @@ import '../models/food_item.dart';
 import '../models/ai_config.dart';
 import '../models/recipe_cache.dart';
 import '../models/recipe_preference.dart';
+import '../localization/app_language.dart';
 
 class RecipeRateLimitException implements Exception {
   final String message;
@@ -281,6 +282,19 @@ while still following the ingredient priority rules above):
 ${preference.toPromptText()}
 '''
         : '';
+    final languageInstruction = AppLanguage.currentLanguageCode == 'th'
+        ? '''
+LANGUAGE REQUIREMENT:
+- Respond in Thai language.
+- Write recipe title, description, ingredients, and cooking instructions in Thai.
+- Keep the JSON field names in English exactly as specified.
+'''
+        : '''
+LANGUAGE REQUIREMENT:
+- Respond in English language.
+- Write recipe title, description, ingredients, and cooking instructions in English.
+- Keep the JSON field names in English exactly as specified.
+''';
 
     final prompt = '''
 You are a helpful chef. I have these food items in my fridge:
@@ -291,6 +305,7 @@ ${expiringList.isEmpty ? 'None' : expiringList}
 OTHER AVAILABLE INGREDIENTS:
 ${otherList.isEmpty ? 'None' : otherList}
 $preferenceBlock
+$languageInstruction
 Please suggest $count recipes that:
 1. PRIORITIZE using the expiring ingredients
 2. Use as many available ingredients as possible
@@ -304,8 +319,18 @@ IMPORTANT:
 - If a recipe can be made without buying anything, prefer it.
 - Do not add unnecessary missing ingredients.
 - Only put ingredients not in the available list into missing_ingredients.
-- NEVER suggest using an ingredient that has already expired. Only the
-  ingredients listed above (EXPIRING SOON and OTHER AVAILABLE) are safe to use.
+- NEVER suggest using an ingredient that has already expired.
+- Only the ingredients listed above (EXPIRING SOON and OTHER AVAILABLE) are safe to use.
+
+LANGUAGE RULES:
+- All human-readable recipe content MUST use the selected language.
+- "title" must use the selected language.
+- "description" must use the selected language.
+- Items in "used_ingredients" must use the selected language when appropriate.
+- Items in "missing_ingredients" must use the selected language.
+- "instructions" must use the selected language.
+- JSON field names MUST remain exactly as specified below.
+- Do NOT translate JSON field names.
 
 Respond ONLY with a valid JSON array, no markdown, no explanation:
 
@@ -396,12 +421,11 @@ Rules:
       );
 
       // --------------------------------------------------------
-      // 429 (Rate limit / Quota exceeded)
-      // --------------------------------------------------------
-
-      if (response.statusCode == 429) {
+// GEMINI ERROR → FALL BACK TO CACHE
+// --------------------------------------------------------
+      if (response.statusCode != 200) {
         debugPrint(
-          'RECIPE SERVICE: rate limited (429), falling back to cache',
+          'GEMINI ERROR ${response.statusCode}: ${response.body}',
         );
 
         final cachedRecipes = await getCachedRecipes();
@@ -411,6 +435,7 @@ Rules:
             'RECIPE SERVICE: returning ${cachedRecipes.length} '
             'cached recipes as fallback',
           );
+
           return cachedRecipes;
         }
 

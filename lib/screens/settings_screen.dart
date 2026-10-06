@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 
+import '../localization/app_language.dart';
+import '../localization/app_text.dart';
 import '../models/notification_service.dart';
 import '../theme/app_theme.dart';
 
@@ -16,13 +19,10 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   static const String _settingsBoxName = 'app_settings';
-
   static const String _familyNameKey = 'family_name';
 
   bool _notificationsEnabled = true;
-
   bool _dailyReminder = true;
-
   int _alertDaysBefore = 3;
 
   String _familyName = 'Family Fridge';
@@ -38,7 +38,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-
     _loadSettings();
   }
 
@@ -47,12 +46,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ============================================================
 
   Future<void> _loadSettings() async {
-    if (!Hive.isBoxOpen(
-      _settingsBoxName,
-    )) {
-      await Hive.openBox(
-        _settingsBoxName,
-      );
+    if (!Hive.isBoxOpen(_settingsBoxName)) {
+      await Hive.openBox(_settingsBoxName);
     }
 
     final box = Hive.box(_settingsBoxName);
@@ -158,13 +153,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // ============================================================
+  // LANGUAGE
+  // ============================================================
+
+  Future<void> _setLanguage(
+    Locale locale,
+  ) async {
+    await context.read<AppLanguage>().setLanguage(
+          locale,
+        );
+  }
+
+  // ============================================================
   // DISPOSE
   // ============================================================
 
   @override
   void dispose() {
     _nameController.dispose();
-
     super.dispose();
   }
 
@@ -176,13 +182,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(
     BuildContext context,
   ) {
+    context.watch<AppLanguage>();
+    final language = context.watch<AppLanguage>();
+
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Settings',
+          AppText.settings,
           style: GoogleFonts.sarabun(
             fontSize: 24,
             fontWeight: FontWeight.w700,
@@ -194,6 +203,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           _buildProfileSection(),
+          const SizedBox(
+            height: 20,
+          ),
+          _buildLanguageSection(
+            language,
+          ),
           const SizedBox(
             height: 20,
           ),
@@ -220,11 +235,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildProfileSection() {
     return _buildSection(
-      title: 'Profile',
-      icon: '👨‍👩‍👧‍👦',
+      title: AppText.profile,
+      icon: '🏠',
       children: [
         _buildTextSetting(
-          label: 'Fridge Name',
+          label: AppText.fridgeName,
           controller: _nameController,
           hint: 'e.g. Family Fridge',
           onChanged: _saveFamilyName,
@@ -234,17 +249,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // ============================================================
+  // LANGUAGE
+  // ============================================================
+
+  Widget _buildLanguageSection(
+    AppLanguage language,
+  ) {
+    return _buildSection(
+      title: AppText.language,
+      icon: '🌐',
+      children: [
+        _buildLanguageTile(
+          title: AppText.thai,
+          locale: AppLanguage.thai,
+          selected: language.locale.languageCode == 'th',
+        ),
+        const Divider(
+          height: 1,
+          color: AppTheme.divider,
+        ),
+        _buildLanguageTile(
+          title: AppText.english,
+          locale: AppLanguage.english,
+          selected: language.locale.languageCode == 'en',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLanguageTile({
+    required String title,
+    required Locale locale,
+    required bool selected,
+  }) {
+    return InkWell(
+      onTap: () => _setLanguage(locale),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.sarabun(
+                  fontSize: 14,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+            Icon(
+              selected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_off_rounded,
+              color: selected ? AppTheme.primary : AppTheme.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
   // NOTIFICATIONS
   // ============================================================
 
   Widget _buildNotificationSection() {
     return _buildSection(
-      title: 'Notifications',
+      title: AppText.notifications,
       icon: '🔔',
       children: [
         _buildSwitchTile(
-          title: 'Enable Notifications',
-          subtitle: 'Get alerts when items are expiring',
+          title: AppText.enableNotifications,
+          subtitle: AppText.getAlertsNotification,
           value: _notificationsEnabled,
           onChanged: _setNotificationsEnabled,
         ),
@@ -253,8 +333,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: AppTheme.divider,
         ),
         _buildSwitchTile(
-          title: 'Daily Summary',
-          subtitle: 'Check your fridge every morning at 9:00 AM',
+          title: AppText.dailyReminder,
+          subtitle: AppText.getMorningAlertsNotification,
           value: _dailyReminder,
           onChanged: _notificationsEnabled ? _setDailyReminder : null,
         ),
@@ -268,7 +348,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildAlertSection() {
     return _buildSection(
-      title: 'Alert Preferences',
+      title: AppText.alertPreferences,
       icon: '⏰',
       children: [
         Padding(
@@ -280,8 +360,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Alert me $_alertDaysBefore '
-                'days before expiry',
+                AppLanguage.currentLanguageCode == 'th'
+                    ? 'แจ้งเตือนก่อนหมดอายุ $_alertDaysBefore วัน'
+                    : 'Alert me $_alertDaysBefore '
+                        'days before expiry',
                 style: GoogleFonts.sarabun(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -305,7 +387,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   min: 1,
                   max: 7,
                   divisions: 6,
-                  label: '$_alertDaysBefore days',
+                  label: AppLanguage.currentLanguageCode == 'th'
+                      ? '$_alertDaysBefore วัน'
+                      : '$_alertDaysBefore days',
                   onChanged: _notificationsEnabled
                       ? (value) {
                           _setAlertDays(
@@ -319,14 +403,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '1 day',
+                    AppLanguage.currentLanguageCode == 'th' ? '1 วัน' : '1 day',
                     style: GoogleFonts.sarabun(
                       fontSize: 11,
                       color: AppTheme.textSecondary,
                     ),
                   ),
                   Text(
-                    '7 days',
+                    AppLanguage.currentLanguageCode == 'th'
+                        ? '7 วัน'
+                        : '7 days',
                     style: GoogleFonts.sarabun(
                       fontSize: 11,
                       color: AppTheme.textSecondary,
@@ -347,11 +433,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildAboutSection() {
     return _buildSection(
-      title: 'About',
+      title: AppText.about,
       icon: 'ℹ️',
       children: [
         _buildInfoTile(
-          'Version',
+          AppText.Version,
           '1.0.0',
         ),
         const Divider(
@@ -359,7 +445,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: AppTheme.divider,
         ),
         _buildInfoTile(
-          'OCR & Classification Scanning',
+          AppText.OCRandClass,
           'gemini-2.5-flash',
         ),
         const Divider(
@@ -367,7 +453,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: AppTheme.divider,
         ),
         _buildInfoTile(
-          'Data Storage',
+          AppText.dataStorage,
           'Hive',
         ),
       ],
@@ -415,9 +501,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(
-              16,
-            ),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: AppTheme.divider,
             ),
@@ -504,25 +588,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               filled: true,
               fillColor: AppTheme.surface,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(
-                  10,
-                ),
+                borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(
                   color: AppTheme.divider,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(
-                  10,
-                ),
+                borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(
                   color: AppTheme.divider,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(
-                  10,
-                ),
+                borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(
                   color: AppTheme.primary,
                 ),
