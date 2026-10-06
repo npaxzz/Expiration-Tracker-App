@@ -396,10 +396,25 @@ Rules:
       );
 
       // --------------------------------------------------------
-      // 429
+      // 429 (Rate limit / Quota exceeded)
       // --------------------------------------------------------
 
       if (response.statusCode == 429) {
+        debugPrint(
+          'RECIPE SERVICE: rate limited (429), falling back to cache',
+        );
+
+        final cachedRecipes = await getCachedRecipes();
+
+        if (cachedRecipes.isNotEmpty) {
+          debugPrint(
+            'RECIPE SERVICE: returning ${cachedRecipes.length} '
+            'cached recipes as fallback',
+          );
+          return cachedRecipes;
+        }
+
+        // ไม่มี cache เลย ค่อย throw ให้ UI จัดการแสดง error ตามปกติ
         throw const RecipeRateLimitException(
           'Recipe service is temporarily busy. '
           'Please try again in a moment.',

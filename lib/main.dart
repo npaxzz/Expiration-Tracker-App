@@ -36,13 +36,13 @@ Future<void> main() async {
 
   await BackgroundService.init();
 
-  await BackgroundService.scheduleDailyCheck();
-
   // ============================================================
   // DAILY 9 AM NOTIFICATION
+  await BackgroundService.scheduleDailyCheck();
   // ============================================================
 
-  await NotificationService.scheduleDailySummary();
+  // open app NOTIFICATION
+  //await NotificationService.scheduleDailySummary();
 
   // ============================================================
   // SYSTEM UI

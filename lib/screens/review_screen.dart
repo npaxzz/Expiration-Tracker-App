@@ -12,6 +12,7 @@ import '../models/scan_result.dart';
 import '../models/food_item.dart';
 import '../models/food_provider.dart';
 import '../theme/app_theme.dart';
+import '../models/expiry_defaults.dart';
 
 class ReviewScreen extends StatefulWidget {
   final ScanResult scanResult;
@@ -29,9 +30,10 @@ class ReviewScreen extends StatefulWidget {
 
 class _ReviewScreenState extends State<ReviewScreen> {
   late TextEditingController _nameController;
-  late FoodCategory _category;
-  late DateTime _expirationDate;
+  FoodCategory? _category;
+  DateTime? _expirationDate;
   final _quantityController = TextEditingController(text: '1');
+  final _notesController = TextEditingController();
   bool _isSaving = false;
 
   @override
@@ -47,6 +49,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   void dispose() {
     _nameController.dispose();
     _quantityController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -87,6 +90,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
           _buildDateSection(),
           const SizedBox(height: 16),
           _buildQuantityRow(),
+          const SizedBox(height: 32),
+          _buildNotesSection(),
           const SizedBox(height: 32),
           _buildConfirmButton(),
           const SizedBox(height: 40),
@@ -256,7 +261,17 @@ class _ReviewScreenState extends State<ReviewScreen> {
         children: FoodCategory.values.map((cat) {
           final isSelected = _category == cat;
           return GestureDetector(
-            onTap: () => setState(() => _category = cat),
+            onTap: () {
+              setState(() {
+                _category = cat;
+
+                // ถ้ายังไม่มีวันหมดอายุ
+                // ให้ใช้วันหมดอายุตามค่าเริ่มต้นของหมวดหมู่
+                if (_expirationDate == null) {
+                  _expirationDate = ExpiryDefaults.getDefaultDate(cat);
+                }
+              });
+            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
@@ -345,7 +360,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                        DateFormat('EEEE, d MMMM yyyy').format(_expirationDate),
+                        DateFormat('EEEE, d MMMM yyyy')
+                            .format(_expirationDate!),
                         style: GoogleFonts.sarabun(
                             fontSize: 15, fontWeight: FontWeight.w500)),
                     Text(_daysText(),
@@ -401,6 +417,49 @@ class _ReviewScreenState extends State<ReviewScreen> {
             child: Icon(icon, color: AppTheme.primary, size: 20)));
   }
 
+  Widget _buildNotesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label('Notes (optional)'),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _notesController,
+          maxLines: 3,
+          style: GoogleFonts.sarabun(fontSize: 14),
+          decoration: InputDecoration(
+            hintText: 'Add any notes...',
+            prefixIcon: const Icon(
+              Icons.notes_rounded,
+              color: AppTheme.primary,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: AppTheme.divider,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: AppTheme.divider,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: AppTheme.primary,
+                width: 1.5,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildConfirmButton() {
     return ElevatedButton.icon(
       onPressed: _isSaving ? null : _save,
@@ -433,17 +492,29 @@ class _ReviewScreenState extends State<ReviewScreen> {
           letterSpacing: 0.5));
 
   String _daysText() {
-    final days = _expirationDate.difference(DateTime.now()).inDays;
+    if (_expirationDate == null) {
+      return 'Select expiration date';
+    }
+
+    final days = _expirationDate!.difference(DateTime.now()).inDays;
+
     if (days < 0) return 'Already expired!';
     if (days == 0) return 'Expires today';
+
     return 'Expires in $days days';
   }
 
   Color _daysColor() {
-    final days = _expirationDate.difference(DateTime.now()).inDays;
+    if (_expirationDate == null) {
+      return AppTheme.soonColor;
+    }
+
+    final days = _expirationDate!.difference(DateTime.now()).inDays;
+
     if (days < 0) return AppTheme.expiredColor;
     if (days <= 3) return AppTheme.soonColor;
     if (days <= 7) return AppTheme.weekColor;
+
     return AppTheme.freshColor;
   }
 
@@ -485,30 +556,131 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Future<void> _save() async {
+    final name = _nameController.text.trim();
+
+    // ตรวจสอบชื่อ
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please enter a product name',
+            style: GoogleFonts.sarabun(),
+          ),
+          backgroundColor: AppTheme.soonColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // ตรวจสอบ Category
+    if (_category == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please select a category',
+            style: GoogleFonts.sarabun(),
+          ),
+          backgroundColor: AppTheme.soonColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // ตรวจสอบวันหมดอายุ
+    if (_expirationDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please select an expiration date',
+            style: GoogleFonts.sarabun(),
+          ),
+          backgroundColor: AppTheme.soonColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // ตรวจสอบรูปภาพ
+    if (widget.productImagePath == null || widget.productImagePath!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please add a product image',
+            style: GoogleFonts.sarabun(),
+          ),
+          backgroundColor: AppTheme.soonColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
+
     try {
-      final savedImagePath =
-          await _saveImagePermanently(widget.productImagePath);
+      final savedImagePath = await _saveImagePermanently(
+        widget.productImagePath,
+      );
+
+      // ตรวจสอบว่ารูปถูกบันทึกจริง
+      if (savedImagePath == null || savedImagePath.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Could not save product image',
+                style: GoogleFonts.sarabun(),
+              ),
+              backgroundColor: AppTheme.soonColor,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
       await context.read<FoodProvider>().addItem(
-            name: _nameController.text.trim().isEmpty
-                ? 'Unknown Product'
-                : _nameController.text.trim(),
-            category: _category,
-            expirationDate: _expirationDate,
-            quantity: int.tryParse(_quantityController.text) ?? 1,
+            name: name,
+            category: _category!,
+            expirationDate: _expirationDate!,
+            quantity: int.tryParse(
+                  _quantityController.text,
+                ) ??
+                1,
+            notes: _notesController.text.trim().isEmpty
+                ? null
+                : _notesController.text.trim(),
             imagePath: savedImagePath,
           );
+
       if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Added to fridge! 🎉',
-            style: GoogleFonts.sarabun(fontWeight: FontWeight.w500)),
-        backgroundColor: AppTheme.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ));
+
+      Navigator.of(context).popUntil(
+        (route) => route.isFirst,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Added to fridge!',
+            style: GoogleFonts.sarabun(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          backgroundColor: AppTheme.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 }

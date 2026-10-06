@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import '../models/food_provider.dart';
 import '../models/food_item.dart';
 import '../theme/app_theme.dart';
+import '../models/expiry_defaults.dart';
 
 class AddItemScreen extends StatefulWidget {
   final FoodItem? existingItem;
@@ -35,11 +36,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   final _picker = ImagePicker();
 
-  FoodCategory _selectedCategory = FoodCategory.fruitsVegetables;
-
-  DateTime _expirationDate = DateTime.now().add(
-    const Duration(days: 7),
-  );
+  FoodCategory? _selectedCategory;
+  DateTime? _expirationDate;
 
   XFile? _pickedImage;
 
@@ -676,6 +674,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 onTap: () {
                   setState(() {
                     _selectedCategory = cat;
+                    _expirationDate = ExpiryDefaults.getDefaultDate(cat);
                   });
                 },
                 child: AnimatedContainer(
@@ -766,9 +765,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
             ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(
-                14,
-              ),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: AppTheme.divider,
               ),
@@ -781,9 +778,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     color: AppTheme.primary.withValues(
                       alpha: 0.08,
                     ),
-                    borderRadius: BorderRadius.circular(
-                      10,
-                    ),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
                     Icons.calendar_today_rounded,
@@ -791,32 +786,33 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     size: 18,
                   ),
                 ),
-                const SizedBox(
-                  width: 12,
-                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        DateFormat(
-                          'EEEE, d MMMM yyyy',
-                        ).format(
-                          _expirationDate,
-                        ),
+                        _expirationDate == null
+                            ? 'Select category first'
+                            : DateFormat(
+                                'EEEE, d MMMM yyyy',
+                              ).format(_expirationDate!),
                         style: GoogleFonts.sarabun(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
-                          color: AppTheme.textPrimary,
+                          color: _expirationDate == null
+                              ? AppTheme.textSecondary
+                              : AppTheme.textPrimary,
                         ),
                       ),
-                      Text(
-                        _getDaysText(),
-                        style: GoogleFonts.sarabun(
-                          fontSize: 12,
-                          color: _getDaysColor(),
+                      if (_expirationDate != null)
+                        Text(
+                          _getDaysText(),
+                          style: GoogleFonts.sarabun(
+                            fontSize: 12,
+                            color: _getDaysColor(),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -833,7 +829,11 @@ class _AddItemScreenState extends State<AddItemScreen> {
   }
 
   String _getDaysText() {
-    final days = _expirationDate
+    if (_expirationDate == null) {
+      return 'Select expiration date';
+    }
+
+    final days = _expirationDate!
         .difference(
           DateTime.now(),
         )
@@ -851,7 +851,11 @@ class _AddItemScreenState extends State<AddItemScreen> {
   }
 
   Color _getDaysColor() {
-    final days = _expirationDate
+    if (_expirationDate == null) {
+      return AppTheme.textSecondary;
+    }
+
+    final days = _expirationDate!
         .difference(
           DateTime.now(),
         )
@@ -1129,6 +1133,46 @@ class _AddItemScreenState extends State<AddItemScreen> {
       return;
     }
 
+    // =========================
+    // REQUIRED: NAME
+    // =========================
+    final name = _nameController.text.trim();
+
+    if (name.isEmpty) {
+      _showSnack('Please enter a product name');
+      return;
+    }
+
+    // =========================
+    // REQUIRED: CATEGORY
+    // =========================
+    if (_selectedCategory == null) {
+      _showSnack('Please select a category');
+      return;
+    }
+
+    // =========================
+    // REQUIRED: EXPIRATION DATE
+    // =========================
+    if (_expirationDate == null) {
+      _showSnack('Please select an expiration date');
+      return;
+    }
+
+    // =========================
+    // REQUIRED: IMAGE
+    // =========================
+    final hasExistingImage = _existingImagePath != null &&
+        _existingImagePath!.isNotEmpty &&
+        !_removeExistingImage;
+
+    final hasNewImage = _pickedImage != null;
+
+    if (!hasNewImage && !hasExistingImage) {
+      _showSnack('Please add a product image');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -1138,33 +1182,33 @@ class _AddItemScreenState extends State<AddItemScreen> {
     try {
       final imagePath = await _getImageStorageValue();
 
+      // ตรวจอีกครั้งว่ารูปสามารถบันทึกได้จริง
+      if (imagePath == null || imagePath.isEmpty) {
+        if (mounted) {
+          _showSnack('Could not save product image');
+        }
+        return;
+      }
+
       if (_isEditing) {
         final updated = widget.existingItem!.copyWith(
-          name: _nameController.text.trim(),
-          category: _selectedCategory,
-          expirationDate: _expirationDate,
-          quantity: int.tryParse(
-                _quantityController.text,
-              ) ??
-              1,
+          name: name,
+          category: _selectedCategory!,
+          expirationDate: _expirationDate!,
+          quantity: int.tryParse(_quantityController.text) ?? 1,
           notes: _notesController.text.trim().isEmpty
               ? null
               : _notesController.text.trim(),
           imagePath: imagePath,
         );
 
-        await provider.updateItem(
-          updated,
-        );
+        await provider.updateItem(updated);
       } else {
         await provider.addItem(
-          name: _nameController.text.trim(),
-          category: _selectedCategory,
-          expirationDate: _expirationDate,
-          quantity: int.tryParse(
-                _quantityController.text,
-              ) ??
-              1,
+          name: name,
+          category: _selectedCategory!,
+          expirationDate: _expirationDate!,
+          quantity: int.tryParse(_quantityController.text) ?? 1,
           notes: _notesController.text.trim().isEmpty
               ? null
               : _notesController.text.trim(),

@@ -130,29 +130,62 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future<void> _analyze() async {
     if (!_canAnalyze) return;
-    setState(() => _isAnalyzing = true);
-    try {
-      ScanResult result;
-      final primary = _primaryImage;
-      final secondary = _secondaryImage;
 
-      result = await VlmService.analyze(
+    setState(() => _isAnalyzing = true);
+
+    final primary = _primaryImage;
+    final secondary = _secondaryImage;
+
+    try {
+      final result = await VlmService.analyze(
         labelImagePath: secondary ?? primary,
         productImagePath: primary,
       );
+
       if (!mounted) return;
+
       setState(() => _isAnalyzing = false);
+
       Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ReviewScreen(
-              scanResult: result,
-              productImagePath: primary,
-            ),
-          ));
-    } catch (e) {
+        context,
+        MaterialPageRoute(
+          builder: (_) => ReviewScreen(
+            scanResult: result,
+            productImagePath: primary,
+          ),
+        ),
+      );
+    } catch (_) {
+      // ============================================================
+      // AI วิเคราะห์ไม่ได้ / Gemini limit / API error
+      // ============================================================
+      // ไม่แสดง error
+      // ไม่ทิ้งรูป
+      // เปิด ReviewScreen แบบ Manual แทน
+      // ============================================================
+
+      if (!mounted) return;
+
       setState(() => _isAnalyzing = false);
-      _showSnack('Analysis failed: $e');
+
+      const manualResult = ScanResult(
+        productName: '',
+        category: null,
+        expirationDate: null,
+        ocrFoundDate: false,
+        confidence: 0.0,
+        isAiGenerated: false,
+      );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ReviewScreen(
+            scanResult: manualResult,
+            productImagePath: primary,
+          ),
+        ),
+      );
     }
   }
 
