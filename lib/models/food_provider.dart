@@ -14,6 +14,10 @@ class FoodProvider extends ChangeNotifier {
 
   final _uuid = const Uuid();
 
+  // ============================================================
+  // HIVE INIT
+  // ============================================================
+
   /// เรียกใน main.dart ก่อน runApp()
   ///
   /// ทำหน้าที่:
@@ -34,6 +38,10 @@ class FoodProvider extends ChangeNotifier {
     }
   }
 
+  // ============================================================
+  // INIT PROVIDER
+  // ============================================================
+
   /// เชื่อมต่อกับ box ที่เปิดไว้แล้ว
   ///
   /// ไม่ต้อง await Hive.openBox() ซ้ำ
@@ -44,14 +52,29 @@ class FoodProvider extends ChangeNotifier {
       _box = await Hive.openBox<FoodItem>(_boxName);
     }
 
-    // เปิด settings box ด้วย เพื่อให้อ่านค่า alert_days_before ได้
-    // (เผื่อผู้ใช้ยังไม่เคยเข้าหน้า Settings มาก่อน)
+    // เปิด settings box ด้วย
+    // เพื่อให้อ่านค่า alert_days_before ได้
+    // เผื่อผู้ใช้ยังไม่เคยเข้าหน้า Settings มาก่อน
     if (!Hive.isBoxOpen(_settingsBoxName)) {
       await Hive.openBox(_settingsBoxName);
     }
 
-    // เช็ควันหมดอายุทุกครั้งที่เปิดแอป
-    await NotificationService.checkAndNotify(items);
+    // ============================================================
+    // OPEN APP NOTIFICATION
+    // ============================================================
+    //
+    // เมื่อเปิดแอป:
+    // ✅ แจ้งเฉพาะรายการที่หมดอายุวันนี้
+    //
+    // ❌ ไม่แจ้งรายการที่หมดอายุไปแล้ว
+    // ❌ ไม่แจ้งรายการที่ใกล้หมดอายุ
+    //
+    // ระบบแจ้งเตือนตามเวลาที่ผู้ใช้ตั้งไว้
+    // ยังคงทำงานผ่าน BackgroundService
+    //
+    await NotificationService.checkAndNotifyExpiredToday(
+      items,
+    );
 
     notifyListeners();
   }
@@ -61,9 +84,12 @@ class FoodProvider extends ChangeNotifier {
   // ============================================================
 
   /// จำนวนวันล่วงหน้าที่ผู้ใช้ตั้งค่าไว้ใน Settings
-  /// (default = 3 ถ้ายังไม่เคยตั้งค่า หรือ box ยังไม่เปิด)
+  ///
+  /// default = 3 ถ้ายังไม่เคยตั้งค่า
   int get alertDaysBefore {
-    if (!Hive.isBoxOpen(_settingsBoxName)) return 3;
+    if (!Hive.isBoxOpen(_settingsBoxName)) {
+      return 3;
+    }
 
     final box = Hive.box(_settingsBoxName);
 
@@ -73,8 +99,11 @@ class FoodProvider extends ChangeNotifier {
     ) as int;
   }
 
-  /// เรียกจาก SettingsScreen เมื่อผู้ใช้เปลี่ยนค่า alert_days_before
-  /// เพื่อให้หน้า Alerts (และหน้าอื่นที่ฟัง FoodProvider) rebuild ทันที
+  /// เรียกจาก SettingsScreen เมื่อผู้ใช้เปลี่ยนค่า
+  /// alert_days_before
+  ///
+  /// เพื่อให้หน้า Alerts
+  /// และหน้าอื่นที่ฟัง FoodProvider rebuild ทันที
   void refreshAlertSettings() {
     notifyListeners();
   }
@@ -87,52 +116,77 @@ class FoodProvider extends ChangeNotifier {
 
   int get totalItems => _box.length;
 
-  int get expiringSoonCount => items.where((item) {
-        final days = item.daysUntilExpiration;
-        return days >= 0 && days <= alertDaysBefore;
-      }).length;
+  int get expiringSoonCount {
+    return items.where((item) {
+      final days = item.daysUntilExpiration;
 
-  List<FoodItem> getByCategory(FoodCategory category) {
-    final result = items.where((item) => item.category == category).toList();
+      return days >= 0 && days <= alertDaysBefore;
+    }).length;
+  }
+
+  List<FoodItem> getByCategory(
+    FoodCategory category,
+  ) {
+    final result = items
+        .where(
+          (item) => item.category == category,
+        )
+        .toList();
 
     result.sort(
-      (a, b) => a.expirationDate.compareTo(b.expirationDate),
+      (a, b) => a.expirationDate.compareTo(
+        b.expirationDate,
+      ),
     );
 
     return result;
   }
 
   List<FoodItem> get expiredItems {
-    final result = items.where((item) => item.isExpired).toList();
+    final result = items
+        .where(
+          (item) => item.isExpired,
+        )
+        .toList();
 
     result.sort(
-      (a, b) => a.expirationDate.compareTo(b.expirationDate),
+      (a, b) => a.expirationDate.compareTo(
+        b.expirationDate,
+      ),
     );
 
     return result;
   }
 
-  /// ของที่ "กำลังจะหมดอายุ" ตาม threshold ที่ผู้ใช้ตั้งไว้ใน Settings
+  /// ของที่ "กำลังจะหมดอายุ"
+  /// ตาม threshold ที่ผู้ใช้ตั้งไว้ใน Settings
   List<FoodItem> get expiringSoonItems {
     final threshold = alertDaysBefore;
 
     final result = items.where((item) {
       final days = item.daysUntilExpiration;
+
       return days >= 0 && days <= threshold;
     }).toList();
 
     result.sort(
-      (a, b) => a.expirationDate.compareTo(b.expirationDate),
+      (a, b) => a.expirationDate.compareTo(
+        b.expirationDate,
+      ),
     );
 
     return result;
   }
 
   List<FoodItem> get allSorted {
-    final result = List<FoodItem>.from(items);
+    final result = List<FoodItem>.from(
+      items,
+    );
 
     result.sort(
-      (a, b) => a.expirationDate.compareTo(b.expirationDate),
+      (a, b) => a.expirationDate.compareTo(
+        b.expirationDate,
+      ),
     );
 
     return result;
@@ -160,9 +214,13 @@ class FoodProvider extends ChangeNotifier {
       imagePath: imagePath,
     );
 
-    await _box.put(item.id, item);
+    await _box.put(
+      item.id,
+      item,
+    );
 
-    // Schedule notification สำหรับ item ใหม่ ตาม threshold ที่ผู้ใช้ตั้งไว้
+    // Schedule notification สำหรับ item ใหม่
+    // ตาม threshold ที่ผู้ใช้ตั้งไว้
     await NotificationService.scheduleExpiryAlert(
       item: item,
       daysBefore: alertDaysBefore,
@@ -175,13 +233,21 @@ class FoodProvider extends ChangeNotifier {
   // UPDATE ITEM
   // ============================================================
 
-  Future<void> updateItem(FoodItem updated) async {
-    await _box.put(updated.id, updated);
+  Future<void> updateItem(
+    FoodItem updated,
+  ) async {
+    await _box.put(
+      updated.id,
+      updated,
+    );
 
     // ยกเลิก notification เดิม
-    await NotificationService.cancelForItem(updated.id);
+    await NotificationService.cancelForItem(
+      updated.id,
+    );
 
-    // สร้าง notification ใหม่ ตาม threshold ที่ผู้ใช้ตั้งไว้
+    // สร้าง notification ใหม่
+    // ตาม threshold ที่ผู้ใช้ตั้งไว้
     await NotificationService.scheduleExpiryAlert(
       item: updated,
       daysBefore: alertDaysBefore,
@@ -194,11 +260,15 @@ class FoodProvider extends ChangeNotifier {
   // DELETE ITEM
   // ============================================================
 
-  Future<void> deleteItem(String id) async {
+  Future<void> deleteItem(
+    String id,
+  ) async {
     await _box.delete(id);
 
     // ยกเลิก notification
-    await NotificationService.cancelForItem(id);
+    await NotificationService.cancelForItem(
+      id,
+    );
 
     notifyListeners();
   }
@@ -207,6 +277,15 @@ class FoodProvider extends ChangeNotifier {
   // CHECK EXPIRATION
   // ============================================================
 
+  /// ตรวจสอบ notification ตาม threshold
+  ///
+  /// ฟังก์ชันนี้ยังคงใช้ checkAndNotify()
+  /// สำหรับกรณีที่ต้องการตรวจ:
+  /// - หมดอายุแล้ว
+  /// - หมดอายุวันนี้
+  /// - ใกล้หมดอายุตามจำนวนวันที่ตั้งไว้
+  ///
+  /// ไม่ใช่ฟังก์ชันสำหรับการเปิดแอป
   Future<void> checkExpiryAndNotify({
     int? alertDaysBefore,
   }) async {
