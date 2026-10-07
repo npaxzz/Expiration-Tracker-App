@@ -29,12 +29,16 @@ class FoodProvider extends ChangeNotifier {
 
     // ป้องกัน register adapter ซ้ำ
     if (!Hive.isAdapterRegistered(0)) {
-      Hive.registerAdapter(FoodItemAdapter());
+      Hive.registerAdapter(
+        FoodItemAdapter(),
+      );
     }
 
     // เปิด box ตั้งแต่ก่อน runApp()
     if (!Hive.isBoxOpen(_boxName)) {
-      await Hive.openBox<FoodItem>(_boxName);
+      await Hive.openBox<FoodItem>(
+        _boxName,
+      );
     }
   }
 
@@ -47,31 +51,33 @@ class FoodProvider extends ChangeNotifier {
   /// ไม่ต้อง await Hive.openBox() ซ้ำ
   Future<void> init() async {
     if (Hive.isBoxOpen(_boxName)) {
-      _box = Hive.box<FoodItem>(_boxName);
+      _box = Hive.box<FoodItem>(
+        _boxName,
+      );
     } else {
-      _box = await Hive.openBox<FoodItem>(_boxName);
+      _box = await Hive.openBox<FoodItem>(
+        _boxName,
+      );
     }
 
     // เปิด settings box ด้วย
     // เพื่อให้อ่านค่า alert_days_before ได้
     // เผื่อผู้ใช้ยังไม่เคยเข้าหน้า Settings มาก่อน
     if (!Hive.isBoxOpen(_settingsBoxName)) {
-      await Hive.openBox(_settingsBoxName);
+      await Hive.openBox(
+        _settingsBoxName,
+      );
     }
 
     // ============================================================
     // OPEN APP NOTIFICATION
     // ============================================================
     //
-    // เมื่อเปิดแอป:
-    // ✅ แจ้งเฉพาะรายการที่หมดอายุวันนี้
-    //
-    // ❌ ไม่แจ้งรายการที่หมดอายุไปแล้ว
-    // ❌ ไม่แจ้งรายการที่ใกล้หมดอายุ
-    //
-    // ระบบแจ้งเตือนตามเวลาที่ผู้ใช้ตั้งไว้
-    // ยังคงทำงานผ่าน BackgroundService
-    //
+    // เมื่อเปิดแอป: แจ้งเฉพาะรายการที่หมดอายุวันนี้
+
+    // ถ้ามีหลายรายการหมดอายุวันนี้
+    // NotificationService จะรวมเป็น 1 notification
+
     await NotificationService.checkAndNotifyExpiredToday(
       items,
     );
@@ -91,7 +97,9 @@ class FoodProvider extends ChangeNotifier {
       return 3;
     }
 
-    final box = Hive.box(_settingsBoxName);
+    final box = Hive.box(
+      _settingsBoxName,
+    );
 
     return box.get(
       'alert_days_before',
@@ -160,6 +168,12 @@ class FoodProvider extends ChangeNotifier {
 
   /// ของที่ "กำลังจะหมดอายุ"
   /// ตาม threshold ที่ผู้ใช้ตั้งไว้ใน Settings
+  ///
+  /// ใช้สำหรับหน้า Alerts / UI
+  ///
+  /// Daily Background Notification
+  /// จะคำนวณข้อมูลจาก Hive โดยตรงอีกครั้ง
+  /// เพื่อให้ได้ข้อมูลล่าสุด
   List<FoodItem> get expiringSoonItems {
     final threshold = alertDaysBefore;
 
@@ -219,13 +233,6 @@ class FoodProvider extends ChangeNotifier {
       item,
     );
 
-    // Schedule notification สำหรับ item ใหม่
-    // ตาม threshold ที่ผู้ใช้ตั้งไว้
-    await NotificationService.scheduleExpiryAlert(
-      item: item,
-      daysBefore: alertDaysBefore,
-    );
-
     notifyListeners();
   }
 
@@ -241,18 +248,6 @@ class FoodProvider extends ChangeNotifier {
       updated,
     );
 
-    // ยกเลิก notification เดิม
-    await NotificationService.cancelForItem(
-      updated.id,
-    );
-
-    // สร้าง notification ใหม่
-    // ตาม threshold ที่ผู้ใช้ตั้งไว้
-    await NotificationService.scheduleExpiryAlert(
-      item: updated,
-      daysBefore: alertDaysBefore,
-    );
-
     notifyListeners();
   }
 
@@ -263,10 +258,7 @@ class FoodProvider extends ChangeNotifier {
   Future<void> deleteItem(
     String id,
   ) async {
-    await _box.delete(id);
-
-    // ยกเลิก notification
-    await NotificationService.cancelForItem(
+    await _box.delete(
       id,
     );
 
@@ -277,21 +269,21 @@ class FoodProvider extends ChangeNotifier {
   // CHECK EXPIRATION
   // ============================================================
 
-  /// ตรวจสอบ notification ตาม threshold
+  /// ระบบ notification หลักมี 2 จุด:
   ///
-  /// ฟังก์ชันนี้ยังคงใช้ checkAndNotify()
-  /// สำหรับกรณีที่ต้องการตรวจ:
-  /// - หมดอายุแล้ว
-  /// - หมดอายุวันนี้
-  /// - ใกล้หมดอายุตามจำนวนวันที่ตั้งไว้
+  /// 1. เปิดแอป
+  ///    -> checkAndNotifyExpiredToday()
+  ///    -> แจ้งเฉพาะหมดอายุวันนี้
   ///
-  /// ไม่ใช่ฟังก์ชันสำหรับการเปิดแอป
+  /// 2. BackgroundService
+  ///    -> ตรวจทุกวัน
+  ///    -> ใช้ Alert Days Before
+  ///    -> รวมเป็น Daily Summary 1 notification
+  ///
+
   Future<void> checkExpiryAndNotify({
     int? alertDaysBefore,
   }) async {
-    await NotificationService.checkAndNotify(
-      items,
-      alertDaysBefore: alertDaysBefore ?? this.alertDaysBefore,
-    );
+    return;
   }
 }

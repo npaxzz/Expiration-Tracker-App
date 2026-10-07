@@ -17,6 +17,12 @@ const String _dailyReminderKey = 'daily_reminder';
 
 const String _alertDaysBeforeKey = 'alert_days_before';
 
+const String _languageKey = 'language';
+
+// ============================================================
+// BACKGROUND DISPATCHER
+// ============================================================
+
 @pragma('vm:entry-point')
 void backgroundDispatcher() {
   Workmanager().executeTask(
@@ -28,6 +34,10 @@ void backgroundDispatcher() {
 
         return true;
       } catch (e) {
+        debugPrint(
+          'BackgroundService: task failed: $e',
+        );
+
         return false;
       }
     },
@@ -46,186 +56,211 @@ Future<void> _runDailyCheck() async {
   await Hive.initFlutter();
 
   if (!Hive.isAdapterRegistered(0)) {
-    Hive.registerAdapter(FoodItemAdapter());
+    Hive.registerAdapter(
+      FoodItemAdapter(),
+    );
   }
 
   final foodBox = await Hive.openBox<FoodItem>(
     _foodBoxName,
   );
 
-  final items = foodBox.values.toList();
-
-  // ----------------------------------------------------------
-  // SETTINGS
-  // ----------------------------------------------------------
-
   final settingsBox = await Hive.openBox(
     _settingsBoxName,
   );
 
-  final notificationsEnabled = settingsBox.get(
-    _notificationsEnabledKey,
-    defaultValue: true,
-  ) as bool;
+  try {
+    // --------------------------------------------------------
+    // SETTINGS
+    // --------------------------------------------------------
 
-  final dailyReminder = settingsBox.get(
-    _dailyReminderKey,
-    defaultValue: true,
-  ) as bool;
+    final notificationsEnabled = settingsBox.get(
+      _notificationsEnabledKey,
+      defaultValue: true,
+    ) as bool;
 
-  final alertDaysBefore = settingsBox.get(
-    _alertDaysBeforeKey,
-    defaultValue: 3,
-  ) as int;
+    final dailyReminder = settingsBox.get(
+      _dailyReminderKey,
+      defaultValue: true,
+    ) as bool;
 
-  // ถ้าปิด notification
-  // ไม่ต้องทำอะไร
-  if (!notificationsEnabled) {
-    await foodBox.close();
-    await settingsBox.close();
-    return;
-  }
+    final alertDaysBefore = settingsBox.get(
+      _alertDaysBeforeKey,
+      defaultValue: 3,
+    ) as int;
 
-  // ----------------------------------------------------------
-  // NOTIFICATION PLUGIN
-  // ----------------------------------------------------------
+    final languageCode = settingsBox.get(
+      _languageKey,
+      defaultValue: 'en',
+    ) as String;
 
-  final plugin = FlutterLocalNotificationsPlugin();
+    final isThai = languageCode == 'th';
 
-  await plugin.initialize(
-    const InitializationSettings(
-      android: AndroidInitializationSettings(
-        '@mipmap/ic_launcher',
+    debugPrint(
+      'BackgroundService: '
+      'notificationsEnabled=$notificationsEnabled, '
+      'dailyReminder=$dailyReminder, '
+      'alertDaysBefore=$alertDaysBefore',
+    );
+
+    // --------------------------------------------------------
+    // MASTER SWITCH
+    // --------------------------------------------------------
+
+    if (!notificationsEnabled) {
+      debugPrint(
+        'BackgroundService: Notifications disabled.',
+      );
+
+      return;
+    }
+
+    // --------------------------------------------------------
+    // DAILY REMINDER SWITCH
+    // --------------------------------------------------------
+
+    if (!dailyReminder) {
+      debugPrint(
+        'BackgroundService: Daily Reminder disabled.',
+      );
+
+      return;
+    }
+
+    // --------------------------------------------------------
+    // READ LATEST FOOD DATA
+    // --------------------------------------------------------
+
+    final items = foodBox.values.toList();
+
+    // --------------------------------------------------------
+    // FIND ITEMS WITHIN THRESHOLD
+    // --------------------------------------------------------
+
+    final expiringSoon = <FoodItem>[];
+
+    for (final item in items) {
+      final days = item.daysUntilExpiration;
+
+      // สำคัญ:
+      //
+      // days == 0
+      // หมดอายุวันนี้
+      //
+      // days > 0
+      // ยังไม่หมดอายุ
+      //
+      // days < 0
+      // หมดอายุไปแล้ว
+      //
+      // Daily Reminder สนใจเฉพาะ:
+      // 0 <= days <= alertDaysBefore
+
+      if (days >= 0 && days <= alertDaysBefore) {
+        expiringSoon.add(
+          item,
+        );
+      }
+    }
+
+    // --------------------------------------------------------
+    // NOTHING TO NOTIFY
+    // --------------------------------------------------------
+
+    if (expiringSoon.isEmpty) {
+      debugPrint(
+        'BackgroundService: '
+        'No items within expiration threshold.',
+      );
+
+      return;
+    }
+
+    // --------------------------------------------------------
+    // NOTIFICATION PLUGIN
+    // --------------------------------------------------------
+
+    final plugin = FlutterLocalNotificationsPlugin();
+
+    await plugin.initialize(
+      const InitializationSettings(
+        android: AndroidInitializationSettings(
+          '@mipmap/ic_launcher',
+        ),
+        iOS: DarwinInitializationSettings(),
       ),
-      iOS: DarwinInitializationSettings(),
-    ),
-  );
-
-  // ----------------------------------------------------------
-  // FIND EXPIRING ITEMS
-  // ----------------------------------------------------------
-
-  final expired = <FoodItem>[];
-  final expiringSoon = <FoodItem>[];
-
-  for (final item in items) {
-    final days = item.daysUntilExpiration;
-
-    if (days < 0) {
-      expired.add(item);
-    } else if (days <= alertDaysBefore) {
-      expiringSoon.add(item);
-    }
-  }
-
-  // ----------------------------------------------------------
-  // EXPIRED NOTIFICATION
-  // ----------------------------------------------------------
-
-  if (expired.isNotEmpty) {
-    final names = expired.map((item) => item.name).join(', ');
-
-    await plugin.show(
-      1001,
-      '❌ ${expired.length} expired '
-      'item${expired.length > 1 ? 's' : ''}',
-      names,
-      _notificationDetails(),
     );
-  }
 
-  // ----------------------------------------------------------
-  // EXPIRING SOON
-  // ----------------------------------------------------------
+    // --------------------------------------------------------
+    // BUILD ONE DAILY SUMMARY
+    // --------------------------------------------------------
 
-  if (expiringSoon.isNotEmpty) {
-    final names = expiringSoon
-        .map(
-          (item) => '${item.name} '
-              '(${item.daysUntilExpiration}d)',
-        )
-        .join(', ');
+    final names = expiringSoon.map(
+      (item) {
+        final days = item.daysUntilExpiration;
 
-    await plugin.show(
-      1002,
-      '⏰ ${expiringSoon.length} item'
-      '${expiringSoon.length > 1 ? 's are' : ' is'} '
-      'expiring soon',
-      names,
-      _notificationDetails(),
-    );
-  }
+        if (isThai) {
+          if (days == 0) {
+            return '${item.name} (วันนี้)';
+          }
 
-  // ----------------------------------------------------------
-  // DAILY SUMMARY
-  // ----------------------------------------------------------
+          return '${item.name} (อีก $days วัน)';
+        }
 
-  // ถ้าเปิด Daily Summary
-  // แสดงทุกครั้งที่ background task ทำงาน
-  if (dailyReminder) {
-    String title;
-    String body;
+        if (days == 0) {
+          return '${item.name} (today)';
+        }
 
-    if (expired.isEmpty && expiringSoon.isEmpty) {
-      title = '✅ Fridge looks good!';
-      body = 'No food items are expiring soon.';
-    } else {
-      final parts = <String>[];
+        return '${item.name} '
+            '(in $days day'
+            '${days > 1 ? 's' : ''})';
+      },
+    ).join(', ');
 
-      if (expired.isNotEmpty) {
-        parts.add(
-          '${expired.length} expired',
-        );
-      }
+    final title = isThai
+        ? '🔔 รายการใกล้หมดอายุ ${expiringSoon.length} รายการ'
+        : '🔔 ${expiringSoon.length} '
+            'item'
+            '${expiringSoon.length > 1 ? 's' : ''} '
+            'expiring soon';
 
-      if (expiringSoon.isNotEmpty) {
-        parts.add(
-          '${expiringSoon.length} expiring soon',
-        );
-      }
-
-      title = '🔔 Daily Fridge Summary';
-      body = parts.join(' • ');
-    }
+    // --------------------------------------------------------
+    // SHOW ONE NOTIFICATION
+    // --------------------------------------------------------
 
     await plugin.show(
       9001,
       title,
-      body,
+      names,
       _dailyNotificationDetails(),
     );
+
+    debugPrint(
+      'BackgroundService: '
+      'Daily summary sent: $names',
+    );
+  } finally {
+    // --------------------------------------------------------
+    // CLOSE HIVE
+    // --------------------------------------------------------
+
+    await foodBox.close();
+    await settingsBox.close();
   }
-
-  await foodBox.close();
-  await settingsBox.close();
 }
 
 // ============================================================
-// NOTIFICATION DETAILS
+// DAILY NOTIFICATION DETAILS
 // ============================================================
-
-NotificationDetails _notificationDetails() {
-  return const NotificationDetails(
-    android: AndroidNotificationDetails(
-      'daily_expiry_check',
-      'Daily Expiry Check',
-      channelDescription: 'Daily check for expiring food items',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-    ),
-    iOS: DarwinNotificationDetails(),
-  );
-}
 
 NotificationDetails _dailyNotificationDetails() {
   return const NotificationDetails(
     android: AndroidNotificationDetails(
-      'daily_summary_channel',
+      'daily_expiration_summary',
       'Daily Expiration Summary',
-      channelDescription: 'Daily expiration summary',
-      importance: Importance.high,
-      priority: Priority.high,
+      channelDescription: 'Daily food expiration summary',
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
       icon: '@mipmap/ic_launcher',
     ),
     iOS: DarwinNotificationDetails(),
@@ -235,27 +270,22 @@ NotificationDetails _dailyNotificationDetails() {
 // ============================================================
 // BACKGROUND SERVICE
 // ============================================================
+
 class BackgroundService {
+  // ==========================================================
+  // INIT
+  // ==========================================================
+
   static Future<void> init() async {
-    // ==========================================================
-    // WEB
-    // ==========================================================
     // WorkManager ไม่รองรับ Flutter Web
-    // ถ้าเรียกบน Chrome จะเกิด:
-    // UnimplementedError
-    // PluginUtilities.getCallbackHandle
-    //
-    // ดังนั้นให้ข้าม WorkManager ไปเลย
     if (kIsWeb) {
       debugPrint(
-        'BackgroundService: Web detected - WorkManager skipped.',
+        'BackgroundService: '
+        'Web detected - WorkManager skipped.',
       );
+
       return;
     }
-
-    // ==========================================================
-    // ANDROID / IOS
-    // ==========================================================
 
     try {
       await Workmanager().initialize(
@@ -264,21 +294,28 @@ class BackgroundService {
       );
 
       debugPrint(
-        'BackgroundService: WorkManager initialized.',
+        'BackgroundService: '
+        'WorkManager initialized.',
       );
     } catch (e) {
       debugPrint(
-        'BackgroundService: initialize failed: $e',
+        'BackgroundService: '
+        'initialize failed: $e',
       );
     }
   }
 
+  // ==========================================================
+  // SCHEDULE DAILY CHECK
+  // ==========================================================
+
   static Future<void> scheduleDailyCheck() async {
-    // Web ไม่สามารถใช้ WorkManager
     if (kIsWeb) {
       debugPrint(
-        'BackgroundService: Web detected - schedule skipped.',
+        'BackgroundService: '
+        'Web detected - schedule skipped.',
       );
+
       return;
     }
 
@@ -293,24 +330,29 @@ class BackgroundService {
     );
 
     // ถ้าเลย 09:00 แล้ว
-    // ให้เริ่มตรวจรอบถัดไปพรุ่งนี้ 09:00
+    // ให้เริ่มรอบถัดไปพรุ่งนี้ 09:00
     if (!now.isBefore(next9am)) {
       next9am = next9am.add(
-        const Duration(days: 1),
+        const Duration(
+          days: 1,
+        ),
       );
     }
 
     final initialDelay = next9am.difference(now);
 
     debugPrint(
-      'BackgroundService: Next daily check: $next9am',
+      'BackgroundService: '
+      'Next daily check: $next9am',
     );
 
     try {
       await Workmanager().registerPeriodicTask(
         _dailyCheckTask,
         _dailyCheckTask,
-        frequency: const Duration(hours: 24),
+        frequency: const Duration(
+          hours: 24,
+        ),
         initialDelay: initialDelay,
         constraints: Constraints(
           networkType: NetworkType.notRequired,
@@ -320,21 +362,28 @@ class BackgroundService {
       );
 
       debugPrint(
-        'BackgroundService: Daily check scheduled.',
+        'BackgroundService: '
+        'Daily check scheduled.',
       );
     } catch (e) {
       debugPrint(
-        'BackgroundService: schedule failed: $e',
+        'BackgroundService: '
+        'schedule failed: $e',
       );
     }
   }
 
+  // ==========================================================
+  // CANCEL
+  // ==========================================================
+
   static Future<void> cancel() async {
-    // Web ไม่มี WorkManager
     if (kIsWeb) {
       debugPrint(
-        'BackgroundService: Web detected - cancel skipped.',
+        'BackgroundService: '
+        'Web detected - cancel skipped.',
       );
+
       return;
     }
 
@@ -344,11 +393,13 @@ class BackgroundService {
       );
 
       debugPrint(
-        'BackgroundService: Daily check cancelled.',
+        'BackgroundService: '
+        'Daily check cancelled.',
       );
     } catch (e) {
       debugPrint(
-        'BackgroundService: cancel failed: $e',
+        'BackgroundService: '
+        'cancel failed: $e',
       );
     }
   }

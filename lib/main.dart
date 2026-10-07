@@ -53,12 +53,6 @@ Future<void> main() async {
   await BackgroundService.scheduleDailyCheck();
 
   // ============================================================
-  // OPEN APP NOTIFICATION
-  // ============================================================
-
-  // await NotificationService.scheduleDailySummary();
-
-  // ============================================================
   // SYSTEM UI
   // ============================================================
 

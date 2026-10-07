@@ -94,13 +94,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       value,
     );
 
-    if (value) {
-      await NotificationService.scheduleDailySummary();
-    }
+    // Enable Notifications = Master Switch
+    //
+    // ON:
+    //   - เปิดแอป -> แจ้งรายการที่หมดอายุวันนี้
+    //   - ถ้า Daily Reminder ON -> BackgroundService แจ้งทุกวัน
+    //
+    // OFF:
+    //   - ไม่มี notification
+    //
   }
 
   // ============================================================
-  // DAILY SUMMARY
+  // DAILY REMINDER
   // ============================================================
 
   Future<void> _setDailyReminder(
@@ -183,6 +189,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     BuildContext context,
   ) {
     context.watch<AppLanguage>();
+
     final language = context.watch<AppLanguage>();
 
     return Scaffold(
@@ -361,7 +368,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Text(
                 AppLanguage.currentLanguageCode == 'th'
-                    ? 'แจ้งเตือนก่อนหมดอายุ $_alertDaysBefore วัน'
+                    ? 'แจ้งเตือนก่อนหมดอายุ '
+                        '$_alertDaysBefore วัน'
                     : 'Alert me $_alertDaysBefore '
                         'days before expiry',
                 style: GoogleFonts.sarabun(
@@ -437,7 +445,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       icon: 'ℹ️',
       children: [
         _buildInfoTile(
-          AppText.Version,
+          AppText.version,
           '1.0.0',
         ),
         const Divider(
@@ -445,7 +453,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: AppTheme.divider,
         ),
         _buildInfoTile(
-          AppText.OCRandClass,
+          AppText.ocrandClass,
           'gemini-2.5-flash',
         ),
         const Divider(

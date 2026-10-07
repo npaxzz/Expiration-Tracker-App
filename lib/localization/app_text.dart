@@ -401,15 +401,15 @@ class AppText {
   static String get lightMeal => _th ? '🥗 อาหารเบา ๆ' : '🥗 Light meal';
   static String get fridgeName => _th ? 'ชื่อ' : 'Name';
   static String get getAlertsNotification => _th
-      ? 'รับการแจ้งเตือนเมื่อวัตถุดิบใกล้หมดอายุ'
-      : 'Get alerts when items are expiring';
+      ? 'เมื่อเปิดแอปจะแจ้งเตือนวัตถุดิบที่หมดอายุวันนี้'
+      : 'Alert when items expire today (When you open the app)';
 
   static String get getMorningAlertsNotification => _th
-      ? 'ตรวจสอบและแจ้งเตือนวันหมดอายุเวลา 09:00 โมงเช้าทุกวัน'
-      : 'Check your fridge every morning at 9:00 AM';
+      ? 'ตรวจสอบและแจ้งเตือนวันหมดอายุทุกวันเวลา 09:00 น.'
+      : 'Check expiration dates every day at 9:00 AM';
 
   static String get dataStorage => _th ? 'พื้นที่จัดเก็บ' : 'Data Storage';
-  static String get OCRandClass =>
+  static String get ocrandClass =>
       _th ? 'อ่านวันหมดอายุและจำแนกประเภท' : 'OCR & Classification Scanning';
-  static String get Version => _th ? 'เวอร์ชั่น' : 'Version';
+  static String get version => _th ? 'เวอร์ชั่น' : 'Version';
 }

@@ -1,9 +1,8 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz;
 
 import 'food_item.dart';
+import '../localization/app_language.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
@@ -14,7 +13,9 @@ class NotificationService {
   static const String _settingsBoxName = 'app_settings';
 
   static const String _notificationsEnabledKey = 'notifications_enabled';
+
   static const String _dailyReminderKey = 'daily_reminder';
+
   static const String _alertDaysBeforeKey = 'alert_days_before';
 
   // ============================================================
@@ -26,13 +27,17 @@ class NotificationService {
       return;
     }
 
-    // Timezone
-    tz.initializeTimeZones();
+    // ----------------------------------------------------------
+    // HIVE SETTINGS
+    // ----------------------------------------------------------
 
-    // Hive settings
     if (!Hive.isBoxOpen(_settingsBoxName)) {
       await Hive.openBox(_settingsBoxName);
     }
+
+    // ----------------------------------------------------------
+    // NOTIFICATION PLUGIN
+    // ----------------------------------------------------------
 
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
@@ -40,13 +45,17 @@ class NotificationService {
 
     const initializationSettings = InitializationSettings(
       android: androidSettings,
+      iOS: DarwinInitializationSettings(),
     );
 
     await _plugin.initialize(
       initializationSettings,
     );
 
-    // Android 13+
+    // ----------------------------------------------------------
+    // ANDROID 13+
+    // ----------------------------------------------------------
+
     final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
 
@@ -56,17 +65,26 @@ class NotificationService {
   }
 
   // ============================================================
-  // SETTINGS
+  // SETTINGS BOX
   // ============================================================
 
   static Box get _settingsBox {
     if (!Hive.isBoxOpen(_settingsBoxName)) {
-      throw Exception('Settings box is not open');
+      throw Exception(
+        'Settings box is not open',
+      );
     }
 
-    return Hive.box(_settingsBoxName);
+    return Hive.box(
+      _settingsBoxName,
+    );
   }
 
+  // ============================================================
+  // SETTINGS GETTERS
+  // ============================================================
+
+  /// Master notification switch
   static bool get notificationsEnabled {
     return _settingsBox.get(
       _notificationsEnabledKey,
@@ -74,6 +92,7 @@ class NotificationService {
     ) as bool;
   }
 
+  /// Daily 09:00 background reminder
   static bool get dailyReminder {
     return _settingsBox.get(
       _dailyReminderKey,
@@ -81,6 +100,8 @@ class NotificationService {
     ) as bool;
   }
 
+  /// Number of days before expiration
+  /// used by Daily Reminder
   static int get alertDaysBefore {
     return _settingsBox.get(
       _alertDaysBeforeKey,
@@ -88,31 +109,55 @@ class NotificationService {
     ) as int;
   }
 
-  static Future<void> setNotificationsEnabled(bool value) async {
+  // ============================================================
+  // SET NOTIFICATIONS ENABLED
+  // ============================================================
+
+  static Future<void> setNotificationsEnabled(
+    bool value,
+  ) async {
     await _settingsBox.put(
       _notificationsEnabledKey,
       value,
     );
 
+    // ถ้าปิด notification
+    // ยกเลิก notification ที่ค้างอยู่ทั้งหมด
     if (!value) {
       await cancelAll();
     }
   }
 
-  static Future<void> setDailyReminder(bool value) async {
+  // ============================================================
+  // SET DAILY REMINDER
+  // ============================================================
+
+  /// Daily Reminder ไม่ได้สร้าง scheduled notification เอง
+  ///
+  /// BackgroundService จะเป็นผู้ตรวจ Hive
+  /// และสร้าง Daily Summary ทุกวันเวลา 09:00
+  static Future<void> setDailyReminder(
+    bool value,
+  ) async {
     await _settingsBox.put(
       _dailyReminderKey,
       value,
     );
 
-    if (value && notificationsEnabled) {
-      await scheduleDailySummary();
-    } else {
+    // ถ้าปิด Daily Reminder
+    // ยกเลิก notification ID เดิมจากระบบเก่า
+    if (!value) {
       await cancelDailySummary();
     }
   }
 
-  static Future<void> setAlertDaysBefore(int days) async {
+  // ============================================================
+  // SET ALERT DAYS BEFORE
+  // ============================================================
+
+  static Future<void> setAlertDaysBefore(
+    int days,
+  ) async {
     await _settingsBox.put(
       _alertDaysBeforeKey,
       days,
@@ -130,11 +175,17 @@ class NotificationService {
     channelDescription: 'Food expiration notifications',
     importance: Importance.high,
     priority: Priority.high,
+    icon: '@mipmap/ic_launcher',
   );
 
   static const NotificationDetails _expiryDetails = NotificationDetails(
     android: _expiryAndroidDetails,
+    iOS: DarwinNotificationDetails(),
   );
+
+  // ============================================================
+  // DAILY SUMMARY DETAILS
+  // ============================================================
 
   static const AndroidNotificationDetails _dailyAndroidDetails =
       AndroidNotificationDetails(
@@ -143,10 +194,12 @@ class NotificationService {
     channelDescription: 'Daily food expiration summary',
     importance: Importance.defaultImportance,
     priority: Priority.defaultPriority,
+    icon: '@mipmap/ic_launcher',
   );
 
   static const NotificationDetails _dailyDetails = NotificationDetails(
     android: _dailyAndroidDetails,
+    iOS: DarwinNotificationDetails(),
   );
 
   // ============================================================
@@ -176,11 +229,14 @@ class NotificationService {
 
   /// เรียกตอนเปิดแอป
   ///
-  /// แจ้งเฉพาะรายการที่ "หมดอายุวันนี้"
+  /// แจ้งเฉพาะรายการที่หมดอายุวันนี้
+  ///
+  /// ถ้ามีหลายรายการ จะรวมเป็น 1 notification
   ///
   /// ไม่แจ้ง:
   /// - รายการที่หมดอายุไปแล้ว
   /// - รายการที่ใกล้หมดอายุ
+  /// - รายการที่หมดอายุในวันอื่น
   static Future<void> checkAndNotifyExpiredToday(
     List<FoodItem> items,
   ) async {
@@ -188,69 +244,34 @@ class NotificationService {
       return;
     }
 
-    for (final item in items) {
-      if (item.daysUntilExpiration == 0) {
-        await showNow(
-          id: item.id.hashCode,
-          title: '⚠️ ${item.name} expires today!',
-          body: 'Use it before it\'s too late.',
-        );
-      }
-    }
-  }
+    final expiringToday = items
+        .where(
+          (item) => item.daysUntilExpiration == 0,
+        )
+        .toList();
 
-  // ============================================================
-  // EXPIRY ALERT
-  // ============================================================
-
-  static Future<void> scheduleExpiryAlert({
-    required FoodItem item,
-    int? daysBefore,
-  }) async {
-    if (!notificationsEnabled) {
+    if (expiringToday.isEmpty) {
       return;
     }
 
-    final days = daysBefore ?? alertDaysBefore;
+    final names = expiringToday
+        .map(
+          (item) => item.name,
+        )
+        .join(', ');
 
-    final expirationDate = item.expirationDate;
+    final isThai = AppLanguage.currentLanguageCode == 'th';
 
-    final scheduledDate = tz.TZDateTime(
-      tz.local,
-      expirationDate.year,
-      expirationDate.month,
-      expirationDate.day,
-      9,
-      0,
-    ).subtract(
-      Duration(days: days),
-    );
+    final title = isThai
+        ? '⚠️ หมดอายุวันนี้ ${expiringToday.length} รายการ'
+        : '⚠️ ${expiringToday.length} '
+            'item${expiringToday.length > 1 ? 's' : ''} '
+            'expire today';
 
-    final now = tz.TZDateTime.now(tz.local);
-
-    if (scheduledDate.isBefore(now)) {
-      return;
-    }
-
-    await _plugin.zonedSchedule(
-      item.id.hashCode,
-      '🔔 ${item.name} expiration reminder',
-      'Expires in $days day${days > 1 ? 's' : ''}.',
-      scheduledDate,
-      _expiryDetails,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
-  }
-
-  // ============================================================
-  // CANCEL ITEM NOTIFICATION
-  // ============================================================
-
-  static Future<void> cancelForItem(String id) async {
-    await _plugin.cancel(
-      id.hashCode,
+    await showNow(
+      id: 1000,
+      title: title,
+      body: names,
     );
   }
 
@@ -263,105 +284,28 @@ class NotificationService {
   }
 
   // ============================================================
-  // CHECK AND NOTIFY
-  // ============================================================
-
-  /// ใช้สำหรับการตรวจแจ้งเตือนตาม threshold
-  ///
-  /// ฟังก์ชันนี้ยังคงทำงานแบบเดิม:
-  /// - หมดอายุแล้ว
-  /// - หมดอายุวันนี้
-  /// - ใกล้หมดอายุตามจำนวนวันที่ตั้งไว้
-  ///
-  /// ไม่ควรเรียกฟังก์ชันนี้ตอนเปิดแอป
-  static Future<void> checkAndNotify(
-    List<FoodItem> items, {
-    int? alertDaysBefore,
-  }) async {
-    if (!notificationsEnabled) {
-      return;
-    }
-
-    final daysBefore = alertDaysBefore ?? NotificationService.alertDaysBefore;
-
-    for (final item in items) {
-      final days = item.daysUntilExpiration;
-
-      if (days < 0) {
-        await showNow(
-          id: item.id.hashCode,
-          title: '❌ ${item.name} has expired!',
-          body: 'Please check and remove it from your fridge.',
-        );
-      } else if (days == 0) {
-        await showNow(
-          id: item.id.hashCode,
-          title: '⚠️ ${item.name} expires today!',
-          body: 'Use it before it\'s too late.',
-        );
-      } else if (days <= daysBefore) {
-        await showNow(
-          id: item.id.hashCode,
-          title: '🔔 ${item.name} expires in '
-              '$days day${days > 1 ? 's' : ''}',
-          body: item.category.displayName,
-        );
-      }
-
-      await scheduleExpiryAlert(
-        item: item,
-        daysBefore: daysBefore,
-      );
-    }
-  }
-
-  // ============================================================
-  // DAILY SUMMARY
-  // ============================================================
-
-  static Future<void> scheduleDailySummary() async {
-    if (!notificationsEnabled || !dailyReminder) {
-      return;
-    }
-
-    await cancelDailySummary();
-
-    final now = tz.TZDateTime.now(tz.local);
-
-    var scheduledDate = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      9,
-      0,
-    );
-
-    if (!scheduledDate.isAfter(now)) {
-      scheduledDate = scheduledDate.add(
-        const Duration(days: 1),
-      );
-    }
-
-    await _plugin.zonedSchedule(
-      9001,
-      '⏰ Daily Expiration Reminder',
-      'Check your food items that are expiring soon.',
-      scheduledDate,
-      _dailyDetails,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
-  }
-
-  // ============================================================
   // CANCEL DAILY SUMMARY
   // ============================================================
 
+  /// ยกเลิก notification 9001
+  ///
+  /// ใช้สำหรับล้าง scheduled notification
+  /// ที่สร้างจากระบบเวอร์ชันเก่า
   static Future<void> cancelDailySummary() async {
     await _plugin.cancel(
       9001,
     );
+  }
+
+  // ============================================================
+  // DAILY SUMMARY DETAILS
+  // ============================================================
+
+  /// ใช้โดย BackgroundService
+  ///
+  /// BackgroundService จะอ่านข้อมูลจาก Hive ใหม่ทุกวัน
+  /// แล้วส่งข้อความที่คำนวณจากข้อมูลล่าสุด
+  static NotificationDetails get dailyDetails {
+    return _dailyDetails;
   }
 }
