@@ -678,7 +678,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 onTap: () {
                   setState(() {
                     _selectedCategory = cat;
-                    _expirationDate = ExpiryDefaults.getDefaultDate(cat);
+                    if (_expirationDate == null) {
+                      _expirationDate = ExpiryDefaults.getDefaultDate(cat);
+                    }
                   });
                 },
                 child: AnimatedContainer(
@@ -1099,19 +1101,20 @@ class _AddItemScreenState extends State<AddItemScreen> {
   // ============================================================
 
   Future<void> _pickDate() async {
+    final today = DateTime.now();
+    final currentDate = _expirationDate ?? today;
+
+    final firstDate =
+        currentDate.isBefore(DateTime(2000)) ? currentDate : DateTime(2000);
+
+    final lastDate =
+        currentDate.isAfter(DateTime(2100)) ? currentDate : DateTime(2100);
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: _expirationDate,
-      firstDate: DateTime.now().subtract(
-        const Duration(
-          days: 365,
-        ),
-      ),
-      lastDate: DateTime.now().add(
-        const Duration(
-          days: 1825,
-        ),
-      ),
+      initialDate: currentDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(

@@ -182,12 +182,14 @@ class FoodItem extends HiveObject {
     return ExpirationStatus.good;
   }
 
+  static const _unset = Object();
+
   FoodItem copyWith({
     String? name,
     FoodCategory? category,
     DateTime? expirationDate,
     int? quantity,
-    String? notes,
+    Object? notes = _unset,
     String? imagePath,
   }) {
     return FoodItem(
@@ -197,7 +199,7 @@ class FoodItem extends HiveObject {
       expirationDate: expirationDate ?? this.expirationDate,
       addedDate: addedDate,
       quantity: quantity ?? this.quantity,
-      notes: notes ?? this.notes,
+      notes: identical(notes, _unset) ? this.notes : notes as String?,
       imagePath: imagePath ?? this.imagePath,
     );
   }

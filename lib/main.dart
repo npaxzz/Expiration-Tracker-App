@@ -226,6 +226,7 @@ class _MainNavigationState extends State<MainNavigation> {
                 Icons.notifications_rounded,
                 Icons.notifications_none_rounded,
                 AppText.alerts,
+                showBadge: true,
               ),
               const SizedBox(
                 width: 60,
@@ -253,9 +254,15 @@ class _MainNavigationState extends State<MainNavigation> {
     int index,
     IconData activeIcon,
     IconData inactiveIcon,
-    String label,
-  ) {
+    String label, {
+    bool showBadge = false,
+  }) {
     final isSelected = _selectedIndex == index;
+
+    final provider = context.watch<FoodProvider>();
+
+    final hasAlerts = provider.expiredItems.isNotEmpty ||
+        provider.expiringSoonItems.isNotEmpty;
 
     return GestureDetector(
       onTap: () {
@@ -285,14 +292,33 @@ class _MainNavigationState extends State<MainNavigation> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isSelected ? activeIcon : inactiveIcon,
-              color: isSelected
-                  ? AppTheme.primary
-                  : const Color(
-                      0xFFB0BEC5,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  isSelected ? activeIcon : inactiveIcon,
+                  color:
+                      isSelected ? AppTheme.primary : const Color(0xFFB0BEC5),
+                  size: 24,
+                ),
+                if (showBadge && hasAlerts)
+                  Positioned(
+                    top: -2,
+                    right: -3,
+                    child: Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 1.5,
+                        ),
+                      ),
                     ),
-              size: 24,
+                  ),
+              ],
             ),
             const SizedBox(
               height: 3,

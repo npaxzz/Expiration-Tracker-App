@@ -526,17 +526,37 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Future<void> _pickDate() async {
+    final today = DateTime.now();
+    final currentDate = _expirationDate ?? today;
+
+    final firstDate =
+        currentDate.isBefore(DateTime(2000)) ? currentDate : DateTime(2000);
+
+    final lastDate =
+        currentDate.isAfter(DateTime(2100)) ? currentDate : DateTime(2100);
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: _expirationDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 1825)),
-      builder: (context, child) => Theme(
+      initialDate: currentDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      builder: (context, child) {
+        return Theme(
           data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(primary: AppTheme.primary)),
-          child: child!),
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
-    if (picked != null) setState(() => _expirationDate = picked);
+
+    if (picked != null) {
+      setState(() {
+        _expirationDate = picked;
+      });
+    }
   }
 
   Future<String?> _saveImagePermanently(String? tempPath) async {
