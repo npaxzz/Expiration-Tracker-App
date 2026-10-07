@@ -358,7 +358,7 @@ class BackgroundService {
           networkType: NetworkType.notRequired,
           requiresBatteryNotLow: false,
         ),
-        existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+        existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
       );
 
       debugPrint(
