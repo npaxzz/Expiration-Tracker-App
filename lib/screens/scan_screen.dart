@@ -161,14 +161,22 @@ class _ScanScreenState extends State<ScanScreen> {
       // ============================================================
       // AI วิเคราะห์ไม่ได้ / Gemini limit / API error
       // ============================================================
-      // ไม่แสดง error
-      // ไม่ทิ้งรูป
       // เปิด ReviewScreen แบบ Manual แทน
       // ============================================================
 
       if (!mounted) return;
 
       setState(() => _isAnalyzing = false);
+
+      // แจ้งเตือนเมื่อ AI ผิดพลาด
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppText.aiScanFailed),
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.orange,
+        ),
+      );
 
       const manualResult = ScanResult(
         productName: '',

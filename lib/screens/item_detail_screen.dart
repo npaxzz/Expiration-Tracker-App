@@ -104,7 +104,7 @@ class ItemDetailScreen extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          item.name,
+                          currentItem.name,
                           style: GoogleFonts.sarabun(
                             fontSize: 28,
                             fontWeight: FontWeight.w700,
@@ -125,7 +125,7 @@ class ItemDetailScreen extends StatelessWidget {
                           ),
                         ),
                         child: Text(
-                          item.statusFor(alertDaysBefore).label,
+                          currentItem.statusFor(alertDaysBefore).label,
                           style: GoogleFonts.sarabun(
                             color: statusColor,
                             fontWeight: FontWeight.w700,

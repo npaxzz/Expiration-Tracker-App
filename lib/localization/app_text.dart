@@ -51,11 +51,12 @@ class AppText {
 
   static String get editItem => _th ? 'แก้ไขรายการ' : 'Edit Item';
 
-  static String get productName => _th ? 'ชื่อสินค้า' : 'Product Name';
+  static String get productName => _th ? 'ชื่อสินค้า *' : 'Product Name *';
 
-  static String get category => _th ? 'หมวดหมู่' : 'Category';
+  static String get category => _th ? 'หมวดหมู่ *' : 'Category *';
 
-  static String get expirationDate => _th ? 'วันหมดอายุ' : 'Expiration Date';
+  static String get expirationDate =>
+      _th ? 'วันหมดอายุ *' : 'Expiration Date *';
 
   static String get quantity => _th ? 'จำนวน' : 'Quantity';
 
@@ -412,4 +413,28 @@ class AppText {
   static String get ocrandClass =>
       _th ? 'อ่านวันหมดอายุและจำแนกประเภท' : 'OCR & Classification Scanning';
   static String get version => _th ? 'เวอร์ชั่น' : 'Version';
+
+  static String get aiScanFailed => _th
+      ? 'ไม่สามารถวิเคราะห์ข้อมูลด้วย AI ได้ กรุณากรอกข้อมูลด้วยตนเอง'
+      : 'Unable to analyze the image with AI. Please enter the information manually.';
+
+  static String get recipeErrorGeneric =>
+      AppLanguage.currentLanguageCode == 'th'
+          ? 'ไม่สามารถสร้างสูตรอาหารใหม่ได้ กรุณาลองอีกครั้ง'
+          : 'Unable to generate new recipes. Please try again.';
+
+  static String get recipeErrorRateLimit =>
+      AppLanguage.currentLanguageCode == 'th'
+          ? 'ขณะนี้มีผู้ใช้งานจำนวนมาก กรุณารอสักครู่แล้วลองใหม่'
+          : 'The recipe service is busy. Please wait a moment and try again.';
+
+  static String get recipeErrorNetwork =>
+      AppLanguage.currentLanguageCode == 'th'
+          ? 'ไม่สามารถเชื่อมต่อได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'
+          : 'Unable to connect. Check your internet connection and try again.';
+
+  static String get recipeErrorNoCache =>
+      AppLanguage.currentLanguageCode == 'th'
+          ? 'ไม่มีสูตรอาหารเก่าที่บันทึกไว้ให้แสดง'
+          : 'No previously saved recipes are available.';
 }

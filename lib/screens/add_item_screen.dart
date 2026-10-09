@@ -40,6 +40,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   FoodCategory? _selectedCategory;
   DateTime? _expirationDate;
+  // true เมื่อผู้ใช้เลือกวันที่เอง หรือกำลังแก้ไขรายการที่มีวันที่เดิม
+  bool _dateSelectedManually = false;
 
   XFile? _pickedImage;
 
@@ -67,6 +69,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
       _selectedCategory = item.category;
 
       _expirationDate = item.expirationDate;
+      // การแก้ไขรายการต้องรักษาวันที่เดิมไว้
+      _dateSelectedManually = item.expirationDate != null;
 
       _existingImagePath = item.imagePath;
     }
@@ -678,7 +682,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 onTap: () {
                   setState(() {
                     _selectedCategory = cat;
-                    if (_expirationDate == null) {
+                    // เปลี่ยนวันที่ตามหมวดหมู่ เฉพาะเมื่อผู้ใช้ยังไม่ได้เลือกวันที่เอง หรือไม่มีวันที่
+                    if (_expirationDate == null || !_dateSelectedManually) {
                       _expirationDate = ExpiryDefaults.getDefaultDate(cat);
                     }
                   });
@@ -754,6 +759,21 @@ class _AddItemScreenState extends State<AddItemScreen> {
   // DATE
   // ============================================================
 
+  int _getDaysUntilExpiration() {
+    if (_expirationDate == null) return 0;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final expiry = DateTime(
+      _expirationDate!.year,
+      _expirationDate!.month,
+      _expirationDate!.day,
+    );
+
+    return expiry.difference(today).inDays;
+  }
+
   Widget _buildDateSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -799,7 +819,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     children: [
                       Text(
                         _expirationDate == null
-                            ? AppText.selectCategoryFirst
+                            ? AppText.selectExpirationDate
                             : DateFormat(
                                 'EEEE, d MMMM yyyy',
                                 AppLanguage.currentLanguageCode == 'th'
@@ -842,11 +862,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       return AppText.selectExpirationDate;
     }
 
-    final days = _expirationDate!
-        .difference(
-          DateTime.now(),
-        )
-        .inDays;
+    final days = _getDaysUntilExpiration();
 
     if (days < 0) {
       return AppText.alreadyExpired;
@@ -864,11 +880,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       return AppTheme.textSecondary;
     }
 
-    final days = _expirationDate!
-        .difference(
-          DateTime.now(),
-        )
-        .inDays;
+    final days = _getDaysUntilExpiration();
 
     if (days < 0) {
       return AppTheme.expiredColor;
@@ -1129,7 +1141,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
     if (picked != null) {
       setState(() {
-        _expirationDate = picked;
+        _expirationDate = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+        );
+        _dateSelectedManually = true;
       });
     }
   }

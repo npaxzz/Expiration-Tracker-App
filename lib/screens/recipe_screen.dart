@@ -119,20 +119,38 @@ class _RecipeScreenState extends State<RecipeScreen> {
   /// - กด Refresh
   ///
   /// จะตรวจวัตถุดิบเฉพาะตอนผู้ใช้กดค้นหา
+
+  void _showRecipeErrorSnackBar(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: GoogleFonts.sarabun(
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: AppTheme.soonColor,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+  }
+
   Future<void> _loadRecipes({
     bool forceRefresh = false,
     RecipePreference? preference,
   }) async {
     if (_isLoading) return;
-
     if (!mounted) return;
 
     final provider = context.read<FoodProvider>();
 
-    // ----------------------------------------------------------
     // ตรวจวัตถุดิบเฉพาะตอนกด Find Recipes / Refresh
-    // ----------------------------------------------------------
-
     if (provider.totalItems == 0) {
       setState(() {
         _recipes = [];
@@ -141,7 +159,6 @@ class _RecipeScreenState extends State<RecipeScreen> {
         _error = null;
         _noIngredients = true;
       });
-
       return;
     }
 
@@ -153,9 +170,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
     });
 
     try {
-      debugPrint(
-        'RecipeScreen: requesting NEW recipes',
-      );
+      debugPrint('RecipeScreen: requesting NEW recipes');
 
       final recipes = await RecipeService.getRecommendations(
         provider.allSorted,
@@ -175,24 +190,58 @@ class _RecipeScreenState extends State<RecipeScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      String errorMessage;
+      final String errorMessage;
 
       if (e is RecipeRateLimitException) {
-        errorMessage = 'Recipe service is temporarily busy.\n'
-            'Please try again in a moment.';
+        errorMessage = AppText.recipeErrorRateLimit;
       } else {
-        errorMessage = e.toString().replaceFirst(
-              'Exception: ',
-              '',
-            );
+        errorMessage = AppText.recipeErrorGeneric;
       }
 
+      debugPrint('RecipeScreen: recipe request failed: $e');
+
+      // พยายามโหลดสูตรเก่าจาก Cache
+      List<RecipeRecommendation> cachedRecipes = [];
+
+      try {
+        cachedRecipes = await RecipeService.getCachedRecipes();
+      } catch (cacheError) {
+        debugPrint(
+          'RecipeScreen: failed to load cached recipes: $cacheError',
+        );
+      }
+
+      if (!mounted) return;
+
+      final bool hasCachedRecipes = cachedRecipes.isNotEmpty;
+      final bool hasExistingRecipes = _recipes != null && _recipes!.isNotEmpty;
+
       setState(() {
-        _error = errorMessage;
         _isLoading = false;
         _isRefreshing = false;
         _noIngredients = false;
+
+        if (hasCachedRecipes) {
+          _recipes = cachedRecipes;
+          _error = null;
+        } else if (hasExistingRecipes) {
+          // คงสูตรเดิมไว้
+          _error = null;
+        } else {
+          // ไม่มีสูตรให้แสดง จึงแสดงหน้า Error ตามเดิม
+          _recipes = null;
+          _error = errorMessage;
+        }
       });
+
+      // แจ้งผู้ใช้ผ่าน SnackBar ทุกครั้งที่สร้างสูตรใหม่ไม่สำเร็จ
+      _showRecipeErrorSnackBar(
+        hasCachedRecipes || hasExistingRecipes
+            ? (AppLanguage.currentLanguageCode == 'th'
+                ? 'สร้างสูตรใหม่ไม่สำเร็จ กำลังแสดงสูตรอาหารที่บันทึกไว้'
+                : 'Could not generate new recipes. Showing saved recipe ideas.')
+            : errorMessage,
+      );
     }
   }
 

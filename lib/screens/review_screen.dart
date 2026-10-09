@@ -37,6 +37,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   final _quantityController = TextEditingController(text: '1');
   final _notesController = TextEditingController();
   bool _isSaving = false;
+  bool _dateSelectedManually = false;
 
   @override
   void initState() {
@@ -44,7 +45,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
     _nameController =
         TextEditingController(text: widget.scanResult.productName);
     _category = widget.scanResult.category;
+
+    // ใช้วันที่จาก AI ก่อน หากไม่มีวันที่จึงใช้ค่าเริ่มต้นตามหมวดหมู่
     _expirationDate = widget.scanResult.expirationDate;
+    if (_expirationDate == null && _category != null) {
+      _expirationDate = ExpiryDefaults.getDefaultDate(_category!);
+    }
+    _dateSelectedManually = false;
   }
 
   @override
@@ -104,6 +111,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Widget _buildAiBadge() {
+    // ไม่แสดง AI Badge เมื่อ AI ทำงานไม่สำเร็จหรือเป็นโหมดกรอกเอง
+    if (!widget.scanResult.isAiGenerated) {
+      return const SizedBox.shrink();
+    }
+
     const engineLabel = 'Gemini Vision';
     const engineIcon = Icons.auto_awesome_rounded;
     const engineColor = Color(0xFF1565C0);
@@ -215,6 +227,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         controller: _nameController,
         style: GoogleFonts.sarabun(fontSize: 15),
         decoration: InputDecoration(
+          hintText: AppText.itemNameHint,
           prefixIcon: const Icon(Icons.label_rounded,
               color: AppTheme.primary, size: 20),
           filled: true,
@@ -240,18 +253,20 @@ class _ReviewScreenState extends State<ReviewScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         _label(AppText.category),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6)),
-          child: Text(AppText.aiDetected,
-              style: GoogleFonts.sarabun(
-                  fontSize: 10,
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.w600)),
-        ),
+        if (widget.scanResult.isAiGenerated) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6)),
+            child: Text(AppText.aiDetected,
+                style: GoogleFonts.sarabun(
+                    fontSize: 10,
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ],
       ]),
       const SizedBox(height: 10),
       GridView.count(
@@ -268,9 +283,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
               setState(() {
                 _category = cat;
 
-                // ถ้ายังไม่มีวันหมดอายุ
-                // ให้ใช้วันหมดอายุตามค่าเริ่มต้นของหมวดหมู่
-                if (_expirationDate == null) {
+                // ถ้า AI ไม่พบวันที่และผู้ใช้ยังไม่ได้เลือกวันที่เอง
+                // ให้อัปเดตวันหมดอายุตามหมวดหมู่ทุกครั้ง
+                if (widget.scanResult.expirationDate == null &&
+                    !_dateSelectedManually) {
                   _expirationDate = ExpiryDefaults.getDefaultDate(cat);
                 }
               });
@@ -314,30 +330,49 @@ class _ReviewScreenState extends State<ReviewScreen> {
     ]);
   }
 
+  int _getDaysUntilExpiration() {
+    if (_expirationDate == null) return 0;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final expiry = DateTime(
+      _expirationDate!.year,
+      _expirationDate!.month,
+      _expirationDate!.day,
+    );
+
+    return expiry.difference(today).inDays;
+  }
+
   Widget _buildDateSection() {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         _label(AppText.expirationDate),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: widget.scanResult.ocrFoundDate
-                ? AppTheme.freshColor.withValues(alpha: 0.1)
-                : AppTheme.soonColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
+        if (widget.scanResult.isAiGenerated) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: widget.scanResult.ocrFoundDate
+                  ? AppTheme.freshColor.withValues(alpha: 0.1)
+                  : AppTheme.soonColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
               widget.scanResult.ocrFoundDate
                   ? AppText.ocrDetected
                   : AppText.defaultNoLabel,
               style: GoogleFonts.sarabun(
-                  fontSize: 10,
-                  color: widget.scanResult.ocrFoundDate
-                      ? AppTheme.freshColor
-                      : AppTheme.soonColor,
-                  fontWeight: FontWeight.w600)),
-        ),
+                fontSize: 10,
+                color: widget.scanResult.ocrFoundDate
+                    ? AppTheme.freshColor
+                    : AppTheme.soonColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ]),
       const SizedBox(height: 8),
       GestureDetector(
@@ -363,17 +398,24 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                        DateFormat(
-                          'EEEE, d MMMM yyyy',
-                          AppLanguage.currentLanguageCode == 'th'
-                              ? 'th_TH'
-                              : 'en_US',
-                        ).format(_expirationDate!),
+                        _expirationDate == null
+                            ? AppText.selectExpirationDate
+                            : DateFormat(
+                                'EEEE, d MMMM yyyy',
+                                AppLanguage.currentLanguageCode == 'th'
+                                    ? 'th_TH'
+                                    : 'en_US',
+                              ).format(_expirationDate!),
                         style: GoogleFonts.sarabun(
-                            fontSize: 15, fontWeight: FontWeight.w500)),
-                    Text(_daysText(),
-                        style: GoogleFonts.sarabun(
-                            fontSize: 12, color: _daysColor())),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: _expirationDate == null
+                                ? AppTheme.textSecondary
+                                : AppTheme.textPrimary)),
+                    if (_expirationDate != null)
+                      Text(_daysText(),
+                          style: GoogleFonts.sarabun(
+                              fontSize: 12, color: _daysColor())),
                   ]),
             ),
             const Icon(Icons.edit_rounded,
@@ -503,7 +545,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       return AppText.selectExpirationDate;
     }
 
-    final days = _expirationDate!.difference(DateTime.now()).inDays;
+    final days = _getDaysUntilExpiration();
 
     if (days < 0) return AppText.alreadyExpired;
     if (days == 0) return AppText.expiresToday;
@@ -516,7 +558,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       return AppTheme.soonColor;
     }
 
-    final days = _expirationDate!.difference(DateTime.now()).inDays;
+    final days = _getDaysUntilExpiration();
 
     if (days < 0) return AppTheme.expiredColor;
     if (days <= 3) return AppTheme.soonColor;
@@ -554,7 +596,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
     if (picked != null) {
       setState(() {
-        _expirationDate = picked;
+        _expirationDate = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+        );
+        _dateSelectedManually = true;
       });
     }
   }
