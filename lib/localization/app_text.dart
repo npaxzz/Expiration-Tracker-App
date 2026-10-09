@@ -405,8 +405,8 @@ class AppText {
       : 'Alert when items expire today (When you open the app)';
 
   static String get getMorningAlertsNotification => _th
-      ? 'ตรวจสอบและแจ้งเตือนวันหมดอายุทุกวันเวลา 09:00 น.'
-      : 'Check expiration dates every day at 9:00 AM';
+      ? 'ตรวจสอบและแจ้งเตือนวันหมดอายุทุกวัน'
+      : 'Check expiration dates every day';
 
   static String get dataStorage => _th ? 'พื้นที่จัดเก็บ' : 'Data Storage';
   static String get ocrandClass =>

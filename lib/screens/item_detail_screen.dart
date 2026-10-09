@@ -22,10 +22,17 @@ class ItemDetailScreen extends StatelessWidget {
     context.watch<AppLanguage>();
     // ดึง threshold จาก FoodProvider (มาจาก Settings) แทนค่า hardcode
     // ใช้ watch เพื่อให้ badge สีอัปเดตทันทีถ้าผู้ใช้ไปเปลี่ยนค่าใน Settings
-    final alertDaysBefore = context.watch<FoodProvider>().alertDaysBefore;
+    final foodProvider = context.watch<FoodProvider>();
 
-    final statusColor = item.statusFor(alertDaysBefore).color;
-    final days = item.daysUntilExpiration;
+    final currentItem = foodProvider.items.firstWhere(
+      (foodItem) => foodItem.id == item.id,
+      orElse: () => item,
+    );
+
+    final alertDaysBefore = foodProvider.alertDaysBefore;
+
+    final statusColor = currentItem.statusFor(alertDaysBefore).color;
+    final days = currentItem.daysUntilExpiration;
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -59,7 +66,7 @@ class ItemDetailScreen extends StatelessWidget {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => AddItemScreen(existingItem: item),
+                      builder: (_) => AddItemScreen(existingItem: currentItem),
                     ),
                   ),
                   child: Container(
@@ -132,9 +139,9 @@ class ItemDetailScreen extends StatelessWidget {
                   _buildExpirationBanner(days, statusColor, alertDaysBefore),
                   const SizedBox(height: 20),
                   _buildInfoGrid(),
-                  if (item.notes != null) ...[
+                  if (currentItem.notes?.trim().isNotEmpty ?? false) ...[
                     const SizedBox(height: 20),
-                    _buildNotesCard(),
+                    _buildNotesCard(currentItem.notes!.trim()),
                   ],
                   const SizedBox(height: 32),
                   _buildDeleteButton(context),
@@ -417,7 +424,7 @@ class ItemDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNotesCard() {
+  Widget _buildNotesCard(String note) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -448,7 +455,7 @@ class ItemDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  item.notes!,
+                  note,
                   style: GoogleFonts.sarabun(
                     fontSize: 14,
                     color: AppTheme.textPrimary,

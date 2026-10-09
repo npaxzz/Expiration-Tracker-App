@@ -305,6 +305,14 @@ class BackgroundService {
     }
   }
 
+  static Future<void> testDailyCheckNow() async {
+    await Workmanager().registerOneOffTask(
+      'daily_expiry_check_test',
+      _dailyCheckTask,
+      existingWorkPolicy: ExistingWorkPolicy.replace,
+    );
+  }
+
   // ==========================================================
   // SCHEDULE DAILY CHECK
   // ==========================================================

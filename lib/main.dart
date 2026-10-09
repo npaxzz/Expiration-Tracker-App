@@ -50,6 +50,9 @@ Future<void> main() async {
   // DAILY 9 AM NOTIFICATION
   // ============================================================
 
+  //check การแจ้งเตือน
+  //await BackgroundService.testDailyCheckNow();
+
   await BackgroundService.scheduleDailyCheck();
 
   // ============================================================
