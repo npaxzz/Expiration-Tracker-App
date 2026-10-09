@@ -12,9 +12,9 @@ class AppLanguage extends ChangeNotifier {
     return _currentLanguageCode;
   }
 
-  static String _currentLanguageCode = 'en';
+  static String _currentLanguageCode = 'th';
 
-  Locale _locale = english;
+  Locale _locale = thai;
 
   Locale get locale => _locale;
 
@@ -25,14 +25,14 @@ class AppLanguage extends ChangeNotifier {
   Future<void> init() async {
     final box = await Hive.openBox(_boxName);
 
-    final savedLanguage = box.get(_languageKey);
+    final savedLanguage = box.get(_languageKey, defaultValue: 'th');
 
-    if (savedLanguage == 'th') {
-      _locale = thai;
-      _currentLanguageCode = 'th';
-    } else {
+    if (savedLanguage == 'en') {
       _locale = english;
       _currentLanguageCode = 'en';
+    } else {
+      _locale = thai;
+      _currentLanguageCode = 'th';
     }
 
     notifyListeners();

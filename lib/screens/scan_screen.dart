@@ -56,8 +56,11 @@ class _ScanScreenState extends State<ScanScreen> {
   void _showSourceSheet(int slot) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
       ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(24),
@@ -65,33 +68,55 @@ class _ScanScreenState extends State<ScanScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: AppTheme.divider,
-                    borderRadius: BorderRadius.circular(2))),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             const SizedBox(height: 20),
-            Text(slot == 1 ? AppText.photo1 : AppText.photo2,
-                style: GoogleFonts.sarabun(
-                    fontSize: 20, fontWeight: FontWeight.w700)),
+            Text(
+              slot == 1 ? AppText.photo1 : AppText.photo2,
+              style: GoogleFonts.sarabun(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 20),
-            Row(children: [
-              if (!kIsWeb) ...[
+            Row(
+              children: [
                 Expanded(
-                    child: _sourceBtn(Icons.camera_alt_rounded, AppText.camera,
-                        AppTheme.primary, () {
-                  Navigator.pop(ctx);
-                  _pickImage(slot: slot, source: ImageSource.camera);
-                })),
+                  child: _sourceBtn(
+                    Icons.camera_alt_rounded,
+                    AppText.camera,
+                    AppTheme.primary,
+                    () {
+                      Navigator.pop(ctx);
+                      _pickImage(
+                        slot: slot,
+                        source: ImageSource.camera,
+                      );
+                    },
+                  ),
+                ),
                 const SizedBox(width: 12),
+                Expanded(
+                  child: _sourceBtn(
+                    Icons.photo_library_rounded,
+                    AppText.gallery,
+                    const Color(0xFF1565C0),
+                    () {
+                      Navigator.pop(ctx);
+                      _pickImage(
+                        slot: slot,
+                        source: ImageSource.gallery,
+                      );
+                    },
+                  ),
+                ),
               ],
-              Expanded(
-                  child: _sourceBtn(Icons.photo_library_rounded,
-                      AppText.gallery, const Color(0xFF1565C0), () {
-                Navigator.pop(ctx);
-                _pickImage(slot: slot, source: ImageSource.gallery);
-              })),
-            ]),
+            ),
             const SizedBox(height: 16),
           ],
         ),

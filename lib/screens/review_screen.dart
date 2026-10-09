@@ -313,7 +313,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 Text(cat.emoji, style: const TextStyle(fontSize: 18)),
                 const SizedBox(width: 8),
                 Expanded(
-                    child: Text(cat.displayName,
+                    child: Text(AppText.categoryName(cat),
                         style: GoogleFonts.sarabun(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
